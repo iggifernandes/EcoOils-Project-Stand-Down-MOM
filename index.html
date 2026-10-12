@@ -53,11 +53,22 @@ h2{color:var(--blue);font-size:1.12em;margin:.7em 0 .35em;border-bottom:2px soli
 .x{position:absolute;right:0;top:0;border:0;background:#e9d3d0;color:#a52a1d;border-radius:50%;width:1.5em;height:1.5em;line-height:1.3em;cursor:pointer;font-size:.95em;padding:0}
 .add{border:1px dashed var(--blue);background:#f2f7fc;color:var(--blue);border-radius:6px;padding:.25em .8em;cursor:pointer;font:inherit;font-size:.85em;margin-top:.2em}
 .photos{display:grid;grid-template-columns:1fr 1fr;gap:.6em;border:1px solid #222;padding:.5em}
-.photos.one{grid-template-columns:minmax(0,62%);justify-content:center}
-.slot{position:relative;border:1px solid #bbb;height:17em;background:#f5f6f8;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.photos.one{grid-template-columns:minmax(0,calc(50% - .3em));justify-content:center}
+.slot{position:relative;border:1px solid #bbb;aspect-ratio:3/2;background:#f5f6f8;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .slot img{width:100%;height:100%;object-fit:cover;display:block}
 .slot .pick{color:#6b7886;font-size:.9em;text-align:center;cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .slot .x{top:.3em;right:.3em;background:#fffc}
+.x.edit{background:#d7e6f5;color:#1f4f82}
+.slot .x.edit,.cphoto .x.edit{right:2.1em;top:.3em;background:#fffc}
+.cphoto .x{top:.3em;right:.3em;background:#fffc}
+#dPhoto{max-width:760px}
+#peC{width:100%;display:block;border:1px solid #9aa5b1;background:#fff;cursor:grab;touch-action:none}
+#peC:active{cursor:grabbing}
+.pe-row{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:13px}
+.pe-row label{margin:0;min-width:92px}
+.pe-row input[type=range]{flex:1}
+.pe-row output{min-width:44px;text-align:right;color:#445}
+.pe-hint{font-size:12px;color:#556;margin-top:6px}
 
 /* ---------- learning card ---------- */
 body.mode-card #sheet{display:none}
@@ -188,6 +199,20 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </div></div>
 </div>
 
+<!-- Photo editor -->
+<dialog id="dPhoto">
+  <h3 data-i18n="pe_title">Adjust photo</h3>
+  <canvas id="peC"></canvas>
+  <div class="pe-hint" data-i18n="pe_hint">Drag the photo to move it. Scroll or use the zoom slider to zoom in or out. What you see inside the frame is what gets placed.</div>
+  <div class="pe-row"><label for="peZoom" data-i18n="pe_zoom">Zoom</label><input type="range" id="peZoom" min="30" max="500" value="100"><output id="peZoomV">100%</output></div>
+  <div class="pe-row"><label for="peBri" data-i18n="pe_bright">Brightness</label><input type="range" id="peBri" min="50" max="220" value="100"><output id="peBriV">100%</output></div>
+  <div class="pe-row"><label for="peCon" data-i18n="pe_contrast">Contrast</label><input type="range" id="peCon" min="50" max="170" value="100"><output id="peConV">100%</output></div>
+  <div class="row" style="justify-content:space-between;flex-wrap:wrap">
+    <span><button id="peRotL" title="Rotate left">⟲</button> <button id="peRotR" title="Rotate right">⟳</button> <button id="peReset" data-i18n="pe_reset">Reset</button></span>
+    <span><button id="peCancel" data-i18n="pe_cancel">Cancel</button> <button class="primary" id="peApply" data-i18n="pe_apply">Use photo</button></span>
+  </div>
+</dialog>
+
 <!-- Settings -->
 <dialog id="dSet">
   <h3 data-i18n="ui_settings">Settings</h3>
@@ -207,7 +232,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -220,7 +245,7 @@ const MAX_PHOTOS = 2;
 const I18N = {
  en:{doc_title:'MINUTES OF THE STAND DOWN MEETING',l_date:'Date & Time',l_chair:'Chaired By',l_att:'Attendees',l_purpose:'Purpose',l_outcome:'Outcome',
   s1:'1. Incidents Discussed',s2:'2. Decisions and Actions Agreed',s3:'3. Closing Remarks',s4:'Photo Evidence — Stand-Down Conducted',
-  ui_new:'New',ui_check:'Check with Claude',m_copied:'Copied. Paste it into the Claude chat that just opened (Ctrl+V).',m_copyfail:'Could not copy. Select the text in the box and copy it manually.',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',
+  ui_new:'New',pe_title:'Adjust photo',pe_hint:'Drag the photo to move it. Scroll or use the zoom slider to zoom in or out. What you see inside the frame is what gets placed.',pe_zoom:'Zoom',pe_bright:'Brightness',pe_contrast:'Contrast',pe_reset:'Reset',pe_cancel:'Cancel',pe_apply:'Use photo',ui_check:'Check with Claude',m_copied:'Copied. Paste it into the Claude chat that just opened (Ctrl+V).',m_copyfail:'Could not copy. Select the text in the box and copy it manually.',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',
   ui_addphoto:'+ Add photo',ui_logo:'Replace logo (optional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: or put your logo in the repo as logo.png.',
   m_saved:'Saved to sheet',m_saving:'Saving…',m_nourl:'Set the Web App URL in Settings first',m_confirmnew:'Start a new blank MOM? Unsaved changes will be lost.',
   m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2',
@@ -229,7 +254,7 @@ const I18N = {
   m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',m_addphoto:'+ Add photo'},
  id:{doc_title:'NOTULEN RAPAT STAND DOWN',l_date:'Tanggal & Waktu',l_chair:'Dipimpin Oleh',l_att:'Peserta',l_purpose:'Tujuan',l_outcome:'Hasil',
   s1:'1. Insiden yang Dibahas',s2:'2. Keputusan dan Tindakan yang Disepakati',s3:'3. Catatan Penutup',s4:'Bukti Foto — Stand Down Dilaksanakan',
-  ui_new:'Baru',ui_check:'Periksa dengan Claude',m_copied:'Tersalin. Tempel di obrolan Claude yang baru terbuka (Ctrl+V).',m_copyfail:'Gagal menyalin. Pilih teks di kotak lalu salin manual.',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',
+  ui_new:'Baru',pe_title:'Atur foto',pe_hint:'Geser foto untuk memindahkan. Gulir atau pakai slider zoom untuk memperbesar atau memperkecil. Yang tampak di dalam bingkai adalah yang akan dipasang.',pe_zoom:'Zoom',pe_bright:'Kecerahan',pe_contrast:'Kontras',pe_reset:'Reset',pe_cancel:'Batal',pe_apply:'Pakai foto',ui_check:'Periksa dengan Claude',m_copied:'Tersalin. Tempel di obrolan Claude yang baru terbuka (Ctrl+V).',m_copyfail:'Gagal menyalin. Pilih teks di kotak lalu salin manual.',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',
   ui_addphoto:'+ Tambah foto',ui_logo:'Ganti logo (opsional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: atau taruh logo di repo sebagai logo.png.',
   m_saved:'Tersimpan di sheet',m_saving:'Menyimpan…',m_nourl:'Isi URL Web App di Pengaturan dulu',m_confirmnew:'Mulai notulen baru? Perubahan yang belum disimpan akan hilang.',
   m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2',
@@ -280,6 +305,7 @@ let synced = [false,false];   // photo already stored in the sheet/Drive (so we 
 const txt = el => el.innerText.replace(/\u00a0/g,' ').replace(/\n+$/,'').trim();
 function ce(cls, ph, val){ const d=document.createElement('div'); d.className=cls; d.contentEditable='true'; if(ph) d.dataset.ph=ph; d.textContent=val||''; return d; }
 function span(cls, ph, val, tag='span'){ const d=document.createElement(tag); d.className=cls; d.contentEditable='true'; if(ph) d.dataset.ph=ph; d.textContent=val||''; return d; }
+function ebtn(fn){ const b=document.createElement('button'); b.className='x edit no-print'; b.textContent='✎'; b.title='Adjust'; b.onclick=fn; return b; }
 function xbtn(fn){ const b=document.createElement('button'); b.className='x no-print'; b.textContent='×'; b.title='Remove'; b.onclick=fn; return b; }
 
 function render(){
@@ -316,7 +342,7 @@ function renderPhotos(){
   box.className = 'photos' + (filled===1 ? ' one' : '');
   S.photos.slice(0,MAX_PHOTOS).forEach((p,i)=>{
     const s=document.createElement('div'); s.className='slot'+(p?'':' empty');
-    if(p){ const im=document.createElement('img'); im.src=p; s.append(im, xbtn(()=>{S.photos[i]=null; synced[i]=false; renderPhotos(); fit(); persist();})); }
+    if(p){ const im=document.createElement('img'); im.src=p; s.append(im, ebtn(()=>editPhoto(p,3/2,u=>{S.photos[i]=u; synced[i]=false; renderPhotos(); fit(); persist();})), xbtn(()=>{S.photos[i]=null; synced[i]=false; renderPhotos(); fit(); persist();})); }
     else { const pk=document.createElement('div'); pk.className='pick no-print'; pk.textContent=t('ui_addphoto'); pk.onclick=()=>{pickIdx=i; $('#fileIn').click();}; s.append(pk); }
     box.append(s);
   });
@@ -335,7 +361,7 @@ async function shrink(file){
 $('#fileIn').addEventListener('change', async e=>{
   const f=e.target.files[0]; e.target.value=''; if(!f) return;
   if(S.photos.filter(Boolean).length>=MAX_PHOTOS && !S.photos[pickIdx]){ toast(t('m_max')); return; }
-  try{ S.photos[pickIdx] = await shrink(f); synced[pickIdx]=false; renderPhotos(); fit(); persist(); }catch(err){ toast(t('m_err')+err.message); }
+  const idx=pickIdx; try{ editPhoto(f,3/2,u=>{ S.photos[idx]=u; synced[idx]=false; renderPhotos(); fit(); persist(); }); }catch(err){ toast(t('m_err')+err.message); }
 });
 
 /* ---------- fit to one page ---------- */
@@ -438,7 +464,7 @@ function renderCard(){
   $('#c_rulev').textContent=C.rule; $('#c_prep').textContent=C.prep; $('#c_sdv').textContent=C.sd;
   $('#c_badge').classList.toggle('on',!!C.lsr);
   const ph=$('#cphoto'); ph.innerHTML=''; ph.classList.toggle('empty',!C.photo);
-  if(C.photo){ const im=document.createElement('img'); im.src=C.photo; ph.append(im, xbtn(()=>{C.photo=null; renderCard(); persistCard();})); }
+  if(C.photo){ const im=document.createElement('img'); im.src=C.photo; ph.append(im, ebtn(()=>editPhoto(C.photo,cardAspect(),u=>{C.photo=u; renderCard(); persistCard();})), xbtn(()=>{C.photo=null; renderCard(); persistCard();})); }
   else { const pk=document.createElement('div'); pk.className='pick no-print'; pk.textContent=t('m_addphoto'); pk.onclick=()=>$('#cfileIn').click(); ph.append(pk); }
   $('#logo2').src=$('#logo').src; fit();
 }
@@ -493,11 +519,69 @@ $('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
 $('#cardSel').onchange=e=>{ if(e.target.value) pickIncident(e.target.value); };
 $('#cardReload').onclick=async()=>{ const cur=C.eosm; if(await loadIms() && cur) pickIncident(cur); };
 document.addEventListener('input',e=>{ if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
-$('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ C.photo=await shrink(f); renderCard(); persistCard(); }catch(err){ toast(t('m_err')+err.message); } });
+$('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photo=u; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
 // The print button prints whichever view is active.
 $('#bPrint').onclick=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
 window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains('mode-card')) collectCard(); else collect(); fit(); });
 
+
+
+/* ---------- Photo editor: zoom, move (crop), rotate, brightness, contrast ---------- */
+const cardAspect = () => { const e=$('#cphoto'); return (e && e.offsetWidth>0 && e.offsetHeight>0) ? e.offsetWidth/e.offsetHeight : 3; };
+const PE = { bmp:null, aspect:1.5, zoom:1, ox:0, oy:0, rot:0, bri:1, con:1, done:null, drag:null };
+const peCtx = () => $('#peC').getContext('2d', {willReadFrequently:true});
+function peRender(cv, W, H){
+  cv.width=W; cv.height=H; const g=cv.getContext('2d', {willReadFrequently:true});
+  g.fillStyle='#fff'; g.fillRect(0,0,W,H);
+  const b=PE.bmp; if(!b) return;
+  const swap = PE.rot%2===1, iw=swap?b.height:b.width, ih=swap?b.width:b.height;
+  const cover=Math.max(W/iw, H/ih), sc=cover*PE.zoom;
+  const useFilter = 'filter' in g;
+  g.save();
+  if(useFilter) g.filter='brightness('+PE.bri+') contrast('+PE.con+')';
+  g.translate(W/2+PE.ox*W, H/2+PE.oy*H); g.rotate(PE.rot*Math.PI/2); g.scale(sc,sc);
+  g.drawImage(b,-b.width/2,-b.height/2);
+  g.restore();
+  if(!useFilter && (PE.bri!==1||PE.con!==1)){   // fallback for browsers without canvas filters
+    const d=g.getImageData(0,0,W,H), a=d.data;
+    for(let i=0;i<a.length;i+=4) for(let k=0;k<3;k++){ let v=a[i+k]*PE.bri; v=(v-128)*PE.con+128; a[i+k]=v<0?0:v>255?255:v; }
+    g.putImageData(d,0,0);
+  }
+}
+function pePaint(){ const cv=$('#peC'); const W=900, H=Math.round(900/PE.aspect); peRender(cv,W,H); }
+let pePending=false; function peSchedule(){ if(pePending) return; pePending=true; requestAnimationFrame(()=>{ pePending=false; pePaint(); }); }
+function peClamp(){ PE.ox=Math.max(-1,Math.min(1,PE.ox)); PE.oy=Math.max(-1,Math.min(1,PE.oy)); }
+function peSync(){
+  $('#peZoom').value=Math.round(PE.zoom*100); $('#peZoomV').textContent=Math.round(PE.zoom*100)+'%';
+  $('#peBri').value=Math.round(PE.bri*100);   $('#peBriV').textContent=Math.round(PE.bri*100)+'%';
+  $('#peCon').value=Math.round(PE.con*100);   $('#peConV').textContent=Math.round(PE.con*100)+'%';
+}
+function peReset(){ PE.zoom=1; PE.ox=0; PE.oy=0; PE.rot=0; PE.bri=1; PE.con=1; peSync(); peSchedule(); }
+async function editPhoto(src, aspect, done){
+  let blob = src;
+  if(typeof src==='string') blob = await (await fetch(src)).blob();
+  PE.bmp = await createImageBitmap(blob);
+  PE.aspect=aspect||1.5; PE.done=done; peReset();
+  $('#dPhoto').showModal(); pePaint();
+}
+$('#peZoom').oninput=e=>{ PE.zoom=e.target.value/100; peSync(); peSchedule(); };
+$('#peBri').oninput =e=>{ PE.bri=e.target.value/100;  peSync(); peSchedule(); };
+$('#peCon').oninput =e=>{ PE.con=e.target.value/100;  peSync(); peSchedule(); };
+$('#peRotL').onclick=()=>{ PE.rot=(PE.rot+3)%4; peSchedule(); };
+$('#peRotR').onclick=()=>{ PE.rot=(PE.rot+1)%4; peSchedule(); };
+$('#peReset').onclick=peReset;
+$('#peCancel').onclick=()=>{ $('#dPhoto').close(); PE.bmp=null; };
+$('#peApply').onclick=()=>{
+  const W=1200, H=Math.round(1200/PE.aspect), c=document.createElement('canvas'); peRender(c,W,H);
+  const url=c.toDataURL('image/jpeg',0.86); $('#dPhoto').close(); const cb=PE.done; PE.bmp=null; if(cb) cb(url);
+};
+(function(){
+  const cv=$('#peC');
+  cv.addEventListener('pointerdown',e=>{ cv.setPointerCapture(e.pointerId); PE.drag={x:e.clientX,y:e.clientY,ox:PE.ox,oy:PE.oy}; });
+  cv.addEventListener('pointermove',e=>{ if(!PE.drag) return; const r=cv.getBoundingClientRect(); PE.ox=PE.drag.ox+(e.clientX-PE.drag.x)/r.width; PE.oy=PE.drag.oy+(e.clientY-PE.drag.y)/r.height; peClamp(); peSchedule(); });
+  const end=()=>{ PE.drag=null; }; cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+  cv.addEventListener('wheel',e=>{ e.preventDefault(); PE.zoom=Math.max(.3,Math.min(5,PE.zoom*Math.exp(-e.deltaY*0.0015))); peSync(); peSchedule(); },{passive:false});
+})();
 
 /* ---------- Check with Claude: copy the text + proofreading instructions, then open Claude ---------- */
 function checkText(){
