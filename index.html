@@ -113,6 +113,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <button id="bSave" class="primary" data-i18n="ui_save">Save to Sheet</button>
   <button id="bLoad" data-i18n="ui_load">Load</button>
   <button id="bPrint" class="primary" data-i18n="ui_print">Print / PDF</button>
+  <button id="bCheck" data-i18n="ui_check" title="Copies your text with proofreading instructions, then opens Claude">Check with Claude</button>
   <button id="bSet" data-i18n="ui_settings">Settings</button>
   <span class="seg"><button id="mMOM" class="on" data-i18n="ui_minutes">Minutes</button><button id="mCard" data-i18n="ui_card">Learning card</button></span>
   <span class="cardbar"><select id="cardSel" title="Incident"></select><button id="cardReload" data-i18n="ui_fetch">Reload from IMS</button></span>
@@ -206,7 +207,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.2.0';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -219,7 +220,7 @@ const MAX_PHOTOS = 2;
 const I18N = {
  en:{doc_title:'MINUTES OF THE STAND DOWN MEETING',l_date:'Date & Time',l_chair:'Chaired By',l_att:'Attendees',l_purpose:'Purpose',l_outcome:'Outcome',
   s1:'1. Incidents Discussed',s2:'2. Decisions and Actions Agreed',s3:'3. Closing Remarks',s4:'Photo Evidence — Stand-Down Conducted',
-  ui_new:'New',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',
+  ui_new:'New',ui_check:'Check with Claude',m_copied:'Copied. Paste it into the Claude chat that just opened (Ctrl+V).',m_copyfail:'Could not copy. Select the text in the box and copy it manually.',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',
   ui_addphoto:'+ Add photo',ui_logo:'Replace logo (optional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: or put your logo in the repo as logo.png.',
   m_saved:'Saved to sheet',m_saving:'Saving…',m_nourl:'Set the Web App URL in Settings first',m_confirmnew:'Start a new blank MOM? Unsaved changes will be lost.',
   m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2',
@@ -228,7 +229,7 @@ const I18N = {
   m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',m_addphoto:'+ Add photo'},
  id:{doc_title:'NOTULEN RAPAT STAND DOWN',l_date:'Tanggal & Waktu',l_chair:'Dipimpin Oleh',l_att:'Peserta',l_purpose:'Tujuan',l_outcome:'Hasil',
   s1:'1. Insiden yang Dibahas',s2:'2. Keputusan dan Tindakan yang Disepakati',s3:'3. Catatan Penutup',s4:'Bukti Foto — Stand Down Dilaksanakan',
-  ui_new:'Baru',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',
+  ui_new:'Baru',ui_check:'Periksa dengan Claude',m_copied:'Tersalin. Tempel di obrolan Claude yang baru terbuka (Ctrl+V).',m_copyfail:'Gagal menyalin. Pilih teks di kotak lalu salin manual.',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',
   ui_addphoto:'+ Tambah foto',ui_logo:'Ganti logo (opsional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: atau taruh logo di repo sebagai logo.png.',
   m_saved:'Tersimpan di sheet',m_saving:'Menyimpan…',m_nourl:'Isi URL Web App di Pengaturan dulu',m_confirmnew:'Mulai notulen baru? Perubahan yang belum disimpan akan hilang.',
   m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2',
@@ -496,6 +497,48 @@ $('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.
 // The print button prints whichever view is active.
 $('#bPrint').onclick=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
 window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains('mode-card')) collectCard(); else collect(); fit(); });
+
+
+/* ---------- Check with Claude: copy the text + proofreading instructions, then open Claude ---------- */
+function checkText(){
+  const card = document.body.classList.contains('mode-card');
+  let kind, body;
+  if(card){
+    collectCard();
+    kind='an incident "Early Learnings" card (one A4 page shown to all crews)';
+    body=[
+      ['Incident ID',C.eosm],['Title',C.title],['Date / time',C.date],['Location',C.loc],['Contractor',C.con],['Classification',C.cls],
+      ['What happened',C.what],['Early findings',C.find],['Key learnings',C.learn],['Immediate actions',C.act],
+      ['Life Saving Rule',C.rule],['Prepared by',C.prep],['Stand down date',C.sd]
+    ].filter(x=>x[1]).map(x=>'## '+x[0]+'\n'+x[1]).join('\n\n');
+  } else {
+    collect();
+    kind='the minutes (MOM) of a site safety Stand Down meeting (one A4 page)';
+    const inc=S.incidents.filter(i=>i.id||i.title||i.desc).map(i=>'- '+[i.id,i.title].filter(Boolean).join(' | ')+(i.desc?'\n  '+i.desc:'')).join('\n');
+    const dec=S.decisions.filter(d=>d.lead||d.text).map(d=>'- '+(d.lead?d.lead+': ':'')+d.text).join('\n');
+    body=[['Project',S.project],['Date & time',S.date],['Chaired by',S.chair],['Attendees',S.attendees],['Purpose',S.purpose],['Outcome',S.outcome]]
+      .filter(x=>x[1]).map(x=>'## '+x[0]+'\n'+x[1]).join('\n\n')
+      +'\n\n## Incidents discussed\n'+(inc||'(none)')+'\n\n## Decisions and actions agreed\n'+(dec||'(none)')+'\n\n## Closing remarks\n'+(S.closing||'(none)');
+  }
+  return 'Please proofread and improve the text below. It is '+kind+' for a construction project (HSSE department, EcoOils Mentari, Sei Mangkei, Indonesia). Crews and senior management will read it.\n\n'
+   +'Rules:\n'
+   +'1. Do NOT change facts, numbers, dates, names, incident IDs, equipment, or rule names. If something looks inconsistent or missing, ask me instead of guessing.\n'
+   +'2. Fix spelling, grammar and punctuation. Keep the original language of each section (English or Bahasa Indonesia).\n'
+   +'3. Make the wording clearer, shorter and more direct. Use plain words a crew member understands. Keep a firm, respectful tone.\n'
+   +'4. It must still fit on one A4 page, so do not make it longer.\n\n'
+   +'Reply with: (a) the improved text, using the same headings so I can paste it back; (b) a short list of what you changed and why; (c) any questions or things that look wrong.\n\n'
+   +'--- TEXT START ---\n'+body+'\n--- TEXT END ---';
+}
+$('#bCheck').onclick=async()=>{
+  const txtAll=checkText();
+  try{ await navigator.clipboard.writeText(txtAll); toast(t('m_copied')); }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=txtAll; ta.style.cssText='position:fixed;inset:10% 10%;width:80%;height:70%;z-index:99;padding:10px';
+    document.body.append(ta); ta.select(); try{ document.execCommand('copy'); toast(t('m_copied')); }catch(e2){ toast(t('m_copyfail')); }
+    ta.onblur=()=>ta.remove();
+  }
+  window.open('https://claude.ai/new','_blank','noopener');
+};
 
 /* ---------- init ---------- */
 $('#ver').textContent='v'+APP_VERSION;
