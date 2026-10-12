@@ -487,7 +487,7 @@ function addToMinutes(eosm, rec){
 function setMode(m){
   document.body.classList.toggle('mode-card',m==='card');
   $('#mMOM').classList.toggle('on',m!=='card'); $('#mCard').classList.toggle('on',m==='card');
-  if(m==='card'){ renderCard(); if(!IMS.length) loadIms(!!C.eosm).then(()=>{ if(C.eosm) $('#cardSel').value=C.eosm; }); }
+  if(m==='card'){ renderCard(); if(!IMS.length) loadIms(!!C.eosm||new URLSearchParams(location.search).has('d')).then(()=>{ if(C.eosm) $('#cardSel').value=C.eosm; }); }
   fit();
 }
 $('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
