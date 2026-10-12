@@ -42,6 +42,7 @@ table.info td{border:1px solid var(--line);padding:.22em .5em;vertical-align:top
 table.info td.k{width:20%;font-weight:700;background:#eef3f8}
 
 h2{color:var(--blue);font-size:1.12em;margin:.7em 0 .35em;border-bottom:2px solid var(--blue);padding-bottom:.08em;font-weight:700}
+.pick{font:inherit;font-size:12px;margin-top:3px;padding:2px 4px;border:1px solid #b8c2cc;border-radius:5px;background:#f7f9fb;max-width:100%}
 .inc{position:relative;margin-bottom:.5em;padding-right:1.6em;display:flex;flex-wrap:wrap;column-gap:.4em;align-items:baseline}
 .i-id{font-weight:700;flex:0 0 auto}
 .i-id:not(:empty)::after{content:' —';font-weight:400}
@@ -152,11 +153,11 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <div class="proj" id="f_project" contenteditable data-ph="Project — Company"></div>
 
   <table class="info">
-    <tr><td class="k" data-i18n="l_date">Date &amp; Time</td><td><div id="f_date" contenteditable data-ph="21 September 2026"></div></td></tr>
+    <tr><td class="k" data-i18n="l_date">Date &amp; Time</td><td><div id="f_date" contenteditable data-ph="21 September 2026"></div><input type="datetime-local" id="p_date" class="no-print pick" title="Date &amp; time picker"></td></tr>
     <tr><td class="k" data-i18n="l_chair">Chaired By</td><td><div id="f_chair" contenteditable></div></td></tr>
     <tr><td class="k" data-i18n="l_att">Attendees</td><td><div id="f_attendees" contenteditable></div></td></tr>
     <tr><td class="k" data-i18n="l_purpose">Purpose</td><td><div id="f_purpose" contenteditable data-ph="Why this stand-down was held…"></div></td></tr>
-    <tr><td class="k" data-i18n="l_outcome">Outcome</td><td><div id="f_outcome" contenteditable data-ph="Conducted as planned…"></div></td></tr>
+    <tr><td class="k" data-i18n="l_outcome">Outcome</td><td><div id="f_outcome" contenteditable data-ph="Conducted as planned…"></div><select id="p_outcome" class="no-print pick"></select></td></tr>
   </table>
 
   <h2 data-i18n="s1">1. Incidents Discussed</h2>
@@ -239,7 +240,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.4';
+const APP_VERSION = '1.3.5';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -272,6 +273,7 @@ const I18N = {
 let lang = localStorage.getItem('sdmom_lang') || 'en';
 const t = k => (I18N[lang][k] ?? I18N.en[k] ?? k);
 function applyLang(){
+  try{ fillOutcomes(); }catch(e){}
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
   $('#lEN').classList.toggle('on', lang==='en'); $('#lID').classList.toggle('on', lang==='id');
@@ -342,6 +344,28 @@ function collect(){
   S.incidents = [...document.querySelectorAll('#incidents .inc')].map(w => ({id:txt(w.querySelector('.i-id')),title:txt(w.querySelector('.i-title')),desc:txt(w.querySelector('.i-desc'))}));
   S.decisions = [...document.querySelectorAll('#decisions .dec')].map(w => ({lead:txt(w.querySelector('.d-lead')),text:txt(w.querySelector('.d-text'))}));
 }
+
+/* ---------- pickers: date & time, outcome presets ---------- */
+const OUTCOMES={
+ en:['Conducted as planned. All incidents below were discussed with all contractor site personnel in attendance.',
+  'Conducted as planned. Incidents discussed, actions agreed and owners assigned.',
+  'Conducted with partial attendance. Remaining personnel to be briefed by their supervisors and attendance recorded.',
+  'Conducted separately by each contractor; briefing records held by the respective contractor HSSE.',
+  'Conducted. Follow-up stand-down to be held once the investigation findings are final.',
+  'Postponed. To be rescheduled; new date to be advised.'],
+ id:['Dilaksanakan sesuai rencana. Seluruh insiden di bawah dibahas dengan semua personel lapangan kontraktor yang hadir.',
+  'Dilaksanakan sesuai rencana. Insiden dibahas, tindakan disepakati dan penanggung jawab ditetapkan.',
+  'Dilaksanakan dengan kehadiran sebagian. Personel lainnya akan di-briefing oleh supervisor masing-masing dan kehadiran dicatat.',
+  'Dilaksanakan terpisah oleh masing-masing kontraktor; catatan briefing disimpan oleh HSSE kontraktor terkait.',
+  'Dilaksanakan. Stand down lanjutan akan diadakan setelah hasil investigasi final.',
+  'Ditunda. Akan dijadwalkan ulang; tanggal baru akan diinformasikan.']};
+function fillOutcomes(){ const sel=$('#p_outcome'); sel.innerHTML='<option value="">'+(lang==='id'?'Pilih hasil…':'Pick an outcome…')+'</option>'; OUTCOMES[lang].forEach((o,i)=>{ const op=document.createElement('option'); op.value=i; op.textContent=o.length>70?o.slice(0,68)+'…':o; op.title=o; sel.append(op); }); }
+$('#p_outcome').onchange=e=>{ if(e.target.value==='') return; $('#f_outcome').textContent=OUTCOMES[lang][+e.target.value]; e.target.value=''; collect(); fit(); persist(); };
+$('#p_date').onchange=e=>{ const v=e.target.value; if(!v) return; const d=new Date(v); if(isNaN(d)) return;
+  const dd=d.toLocaleDateString(lang==='id'?'id-ID':'en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const tm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  $('#f_date').textContent=dd+', '+tm; collect(); fit(); persist(); };
+fillOutcomes();
 
 /* ---------- photos (max 2) ---------- */
 let pickIdx = 0;
