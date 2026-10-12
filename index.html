@@ -249,7 +249,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.10';
+const APP_VERSION = '1.3.11';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -516,8 +516,69 @@ $('#addInc').onclick=()=>{ collect(); S.incidents.push({id:'',title:'',desc:''})
 $('#addDec').onclick=()=>{ collect(); S.decisions.push({lead:'',text:''}); render(); persist(); };
 $('#bSet').onclick=()=>{ const c=cfg(); $('#cfgUrl').value=c.url||DEFAULT_GS_URL; $('#dSet').showModal(); };
 $('#cfgOk').onclick=()=>{ localStorage.setItem('sdmom_cfg',JSON.stringify({url:$('#cfgUrl').value.trim()})); $('#dSet').close(); };
-$('#lEN').onclick=()=>{lang='en';localStorage.setItem('sdmom_lang',lang);applyLang();};
-$('#lID').onclick=()=>{lang='id';localStorage.setItem('sdmom_lang',lang);applyLang();};
+/* ---------- translate the typed content when the EN / ID toggle changes ---------- */
+const PHRASES = () => { const m={}; const add=(en,id)=>{ m['en|'+en]=id; m['id|'+id]=en; };
+  add(DEF_PURPOSE,'Untuk berbagi temuan awal dan pembelajaran utama');
+  OUTCOMES.en.forEach((o,i)=>add(o,OUTCOMES.id[i])); return m; };
+let tEng={};   // cached on-device translators
+async function trEngine(from,to){
+  const k=from+to; if(k in tEng) return tEng[k];
+  tEng[k]=null;
+  try{ if('Translator' in self){ const lim=(p,ms)=>Promise.race([p,new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),ms))]); const av=await lim(Translator.availability({sourceLanguage:from,targetLanguage:to}),1500); if(av==='available') tEng[k]=await lim(Translator.create({sourceLanguage:from,targetLanguage:to}),3000); } }catch(e){ tEng[k]=null; }
+  return tEng[k];
+}
+async function trOne(txt,from,to,eng){
+  if(eng){ try{ return await eng.translate(txt); }catch(e){} }
+  try{
+    const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl='+from+'&tl='+to+'&dt=t&q='+encodeURIComponent(txt));
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json(); return j[0].map(x=>x[0]).join('');
+  }catch(e){
+    const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(txt)+'&langpair='+from+'|'+to);
+    const j=await r.json(); if(!j.responseData||!j.responseData.translatedText) throw e; return j.responseData.translatedText;
+  }
+}
+async function trMany(list,from,to){            // list of strings (may contain \n) -> translated list
+  const ph=PHRASES(), eng=await trEngine(from,to);
+  const jobs=[]; const res=list.map(s=>String(s||'').split('\n'));
+  res.forEach((lines,a)=>lines.forEach((ln,b)=>{ const t0=ln.trim(); if(!t0) return; const hit=ph[from+'|'+t0]; if(hit){ lines[b]=hit; return; }
+    const m=/^(\s*(?:[•\-*]|\d+[.)])\s*)?(.*)$/.exec(ln); jobs.push({a,b,pre:m[1]||'',txt:m[2]}); }));
+  let i=0; const worker=async()=>{ while(i<jobs.length){ const j=jobs[i++]; j.out=j.pre+await trOne(j.txt,from,to,eng); res[j.a][j.b]=j.out; } };
+  await Promise.all([worker(),worker(),worker(),worker()]);
+  return res.map(l=>l.join('\n'));
+}
+const cOf = () => ({ S:{date:S.date,attendees:S.attendees,purpose:S.purpose,outcome:S.outcome,closing:S.closing,
+    incidents:S.incidents.map(x=>({title:x.title,desc:x.desc})), decisions:S.decisions.map(x=>({lead:x.lead,text:x.text}))},
+  C:{title:C.title,date:C.date,loc:C.loc,con:C.con,cls:C.cls,what:C.what,find:C.find,learn:C.learn,act:C.act,rule:C.rule} });
+const cFlat = o => [o.S.date,o.S.attendees,o.S.purpose,o.S.outcome,o.S.closing,...o.S.incidents.flatMap(x=>[x.title,x.desc]),...o.S.decisions.flatMap(x=>[x.lead,x.text]),
+  o.C.title,o.C.date,o.C.loc,o.C.con,o.C.cls,o.C.what,o.C.find,o.C.learn,o.C.act,o.C.rule];
+function cUnflat(o,v){ let i=0; const n=()=>v[i++]; const r={S:{},C:{}};
+  ['date','attendees','purpose','outcome','closing'].forEach(k=>r.S[k]=n());
+  r.S.incidents=o.S.incidents.map(()=>({title:n(),desc:n()})); r.S.decisions=o.S.decisions.map(()=>({lead:n(),text:n()}));
+  ['title','date','loc','con','cls','what','find','learn','act','rule'].forEach(k=>r.C[k]=n()); return r; }
+function cApply(d){ Object.assign(S,d.S); S.incidents=d.S.incidents.map((x,i)=>({...(S.incidents[i]||{id:''}),...x})); S.decisions=d.S.decisions.map((x,i)=>({...(S.decisions[i]||{}),...x})); Object.assign(C,d.C); }
+const cHash = o => JSON.stringify(cFlat(o));
+let TSTORE={en:null,id:null};
+async function translateContent(o,from,to){ const out=await trMany(cFlat(o),from,to); return cUnflat(o,out); }
+async function switchLang(to){
+  if(to===lang) return; const from=lang; collect(); collectCard();
+  const cur=cOf(), h=cHash(cur);
+  TSTORE[from]={...(TSTORE[from]||{}),data:cur,hash:h};
+  const tg=TSTORE[to]; let ok=true;
+  if(tg && tg.hash!==undefined && TSTORE[from].srcHash===tg.hash){ cApply(tg.data); }
+  else { $('#status').textContent=(to==='id'?'Menerjemahkan…':'Translating…'); document.body.style.cursor='progress';
+    try{ const nd=await translateContent(cur,from,to); cApply(nd); TSTORE[to]={data:nd,hash:cHash(nd),srcHash:h}; }
+    catch(e){ ok=false; }
+    document.body.style.cursor=''; }
+  lang=to; localStorage.setItem('sdmom_lang',lang); applyLang(); render(); renderCard(); persist(); persistCard();
+  toast(ok?(to==='id'?'Konten diterjemahkan ke Bahasa Indonesia — periksa sebelum cetak':'Content translated to English — please check before printing'):(to==='id'?'Label diganti; konten tidak dapat diterjemahkan (tidak ada koneksi)':'Labels switched; content could not be translated (no connection)'));
+}
+async function retranslateLoaded(){            // after an incident is loaded in English while the page is in Bahasa Indonesia
+  TSTORE={en:null,id:null}; if(lang!=='id') return;
+  try{ collect(); collectCard(); const nd=await translateContent(cOf(),'en','id'); cApply(nd); render(); renderCard(); persist(); persistCard(); }catch(e){}
+}
+$('#lEN').onclick=()=>switchLang('en');
+$('#lID').onclick=()=>switchLang('id');
 
 /* ---------- logo ---------- */
 const FALLBACK_LOGO = 'data:image/svg+xml;utf8,'+encodeURIComponent(
@@ -597,6 +658,7 @@ function pickIncident(eosm){
   const r=IMS.find(x=>x.eosm===eosm || (x.eosm||'').startsWith(eosm+'-')); if(!r){ toast(t('m_noinc')); return; }
   const keep=C.photos; C=fromIms(r); C.photos=keep; $('#cardSel').value=r.eosm; renderCard(); persistCard();
   addToMinutes(r.eosm,r);
+  retranslateLoaded();
 }
 function addToMinutes(eosm, rec){
   const r=rec||IMS.find(x=>x.eosm===eosm); if(!r) return;
@@ -746,6 +808,7 @@ render(); applyLang();
     if(pl.minutes){ S={...blank(),...pl.minutes,id:'',photos:[null,null],incidents:[{id:'',title:'',desc:''}]}; synced=[false,false]; render(); }
     if(card){ setMode('card'); C={...fromIms(rec), photos:C.photos}; renderCard(); persistCard(); addToMinutes(card,rec); }
     if(mom){ addToMinutes(mom, {...pl, earlyLearnings:{whatHappened:pl.whatHappened,keyLearnings:pl.keyLearnings}}); }
+    retranslateLoaded();
     loadIms(true);
   } else {
     if(card||mom){ await loadIms(); } else loadIms(true);
