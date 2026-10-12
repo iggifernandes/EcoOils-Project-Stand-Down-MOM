@@ -76,6 +76,8 @@ h2{color:var(--blue);font-size:1.12em;margin:.7em 0 .35em;border-bottom:2px soli
 /* ---------- learning card ---------- */
 body.mode-card #sheet{display:none}
 body:not(.mode-card) #cardSheet,body:not(.mode-card) .cardbar{display:none}
+body.mode-both #sheet,body.mode-both #cardSheet{display:block}
+@media print{body.mode-both #cardStage{break-before:page}}
 .cardbar{display:inline-flex;gap:8px;align-items:center}
 .cardbar select{font:inherit;font-size:13px;padding:5px 8px;border-radius:6px;max-width:340px}
 .cbadge{display:none;background:#c0392b;color:#fff;font-weight:700;padding:.25em .8em;border-radius:4px;letter-spacing:.5px}
@@ -131,6 +133,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <button id="bSave" class="primary" data-i18n="ui_save">Save to Sheet</button>
   <button id="bLoad" data-i18n="ui_load">Load</button>
   <button id="bPrint" class="primary" data-i18n="ui_print">Print / PDF</button>
+  <button id="bPrintBoth" class="primary" data-i18n="ui_printboth" title="Minutes + Learning card in one PDF">Download both (PDF)</button>
   <button id="bCheck" data-i18n="ui_check" title="Copies your text with proofreading instructions, then opens Claude">Check with Claude</button>
   <button id="bSet" data-i18n="ui_settings">Settings</button>
   <span class="seg"><button id="mMOM" class="on" data-i18n="ui_minutes">Minutes</button><button id="mCard" data-i18n="ui_card">Learning card</button></span>
@@ -241,7 +244,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.6';
+const APP_VERSION = '1.3.7';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -254,7 +257,7 @@ const MAX_PHOTOS = 2;
 const I18N = {
  en:{doc_title:'MINUTES OF THE STAND DOWN MEETING',l_date:'Date & Time',l_chair:'Chaired By',l_att:'Attendees',l_purpose:'Purpose',l_outcome:'Outcome',
   s1:'1. Incidents Discussed',s2:'2. Decisions and Actions Agreed',s3:'3. Closing Remarks',s4:'Photo Evidence — Stand-Down Conducted',
-  ui_new:'New',pe_title:'Adjust photo',pe_hint:'Drag the photo to move it. Scroll or use the zoom slider to zoom in or out. What you see inside the frame is what gets placed.',pe_zoom:'Zoom',pe_bright:'Brightness',pe_contrast:'Contrast',pe_reset:'Reset',pe_cancel:'Cancel',pe_apply:'Use photo',ui_check:'Check with Claude',m_copied:'Copied. Paste it into the Claude chat that just opened (Ctrl+V).',m_copyfail:'Could not copy. Select the text in the box and copy it manually.',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',ui_pickdec:'+ Add suggested decisions…',
+  ui_new:'New',pe_title:'Adjust photo',pe_hint:'Drag the photo to move it. Scroll or use the zoom slider to zoom in or out. What you see inside the frame is what gets placed.',pe_zoom:'Zoom',pe_bright:'Brightness',pe_contrast:'Contrast',pe_reset:'Reset',pe_cancel:'Cancel',pe_apply:'Use photo',ui_check:'Check with Claude',m_copied:'Copied. Paste it into the Claude chat that just opened (Ctrl+V).',m_copyfail:'Could not copy. Select the text in the box and copy it manually.',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',ui_pickdec:'+ Add suggested decisions…',ui_printboth:'Download both (PDF)',m_cardempty:'The Learning card is empty. Open the Learning card and pick an incident first.',
   ui_addphoto:'+ Add photo',ui_logo:'Replace logo (optional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: or put your logo in the repo as logo.png.',
   m_saved:'Saved to sheet',m_saving:'Saving…',m_nourl:'Set the Web App URL in Settings first',m_confirmnew:'Start a new blank MOM? Unsaved changes will be lost.',
   m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2',
@@ -263,7 +266,7 @@ const I18N = {
   m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',m_pickmin:'+ Add incident from register…',m_incadded:'Added to Incidents discussed',m_addphoto:'+ Add photo'},
  id:{doc_title:'NOTULEN RAPAT STAND DOWN',l_date:'Tanggal & Waktu',l_chair:'Dipimpin Oleh',l_att:'Peserta',l_purpose:'Tujuan',l_outcome:'Hasil',
   s1:'1. Insiden yang Dibahas',s2:'2. Keputusan dan Tindakan yang Disepakati',s3:'3. Catatan Penutup',s4:'Bukti Foto — Stand Down Dilaksanakan',
-  ui_new:'Baru',pe_title:'Atur foto',pe_hint:'Geser foto untuk memindahkan. Gulir atau pakai slider zoom untuk memperbesar atau memperkecil. Yang tampak di dalam bingkai adalah yang akan dipasang.',pe_zoom:'Zoom',pe_bright:'Kecerahan',pe_contrast:'Kontras',pe_reset:'Reset',pe_cancel:'Batal',pe_apply:'Pakai foto',ui_check:'Periksa dengan Claude',m_copied:'Tersalin. Tempel di obrolan Claude yang baru terbuka (Ctrl+V).',m_copyfail:'Gagal menyalin. Pilih teks di kotak lalu salin manual.',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',ui_pickdec:'+ Tambah keputusan yang disarankan…',
+  ui_new:'Baru',pe_title:'Atur foto',pe_hint:'Geser foto untuk memindahkan. Gulir atau pakai slider zoom untuk memperbesar atau memperkecil. Yang tampak di dalam bingkai adalah yang akan dipasang.',pe_zoom:'Zoom',pe_bright:'Kecerahan',pe_contrast:'Kontras',pe_reset:'Reset',pe_cancel:'Batal',pe_apply:'Pakai foto',ui_check:'Periksa dengan Claude',m_copied:'Tersalin. Tempel di obrolan Claude yang baru terbuka (Ctrl+V).',m_copyfail:'Gagal menyalin. Pilih teks di kotak lalu salin manual.',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',ui_pickdec:'+ Tambah keputusan yang disarankan…',ui_printboth:'Unduh keduanya (PDF)',m_cardempty:'Kartu pembelajaran masih kosong. Buka Kartu pembelajaran dan pilih insiden dulu.',
   ui_addphoto:'+ Tambah foto',ui_logo:'Ganti logo (opsional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: atau taruh logo di repo sebagai logo.png.',
   m_saved:'Tersimpan di sheet',m_saving:'Menyimpan…',m_nourl:'Isi URL Web App di Pengaturan dulu',m_confirmnew:'Mulai notulen baru? Perubahan yang belum disimpan akan hilang.',
   m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2',
@@ -429,13 +432,20 @@ $('#fileIn').addEventListener('change', async e=>{
 
 /* ---------- fit to one page ---------- */
 const PAGE_PX = 277/25.4*96;   // A4 height minus 10 mm margins
-function fit(){
-  const card=document.body.classList.contains('mode-card');
+function fitOne(card){
   const sh=card?$('#cardSheet'):$('#sheet'), pg=card?$('#cardPage'):$('#page'); let fs=10.5;
   for(; fs>=7; fs-=0.25){ sh.style.fontSize=fs+'pt'; if(pg.offsetHeight<=PAGE_PX) break; }
   fs=Math.max(fs,7); sh.style.fontSize=fs+'pt';
-  const one = pg.offsetHeight<=PAGE_PX+1;
-  const chip=$('#fitchip'); chip.textContent=(one?t('p1'):t('p2'))+' · '+fs.toFixed(1)+'pt'; chip.classList.toggle('warn',!one);
+  return {one: pg.offsetHeight<=PAGE_PX+1, fs};
+}
+function fit(){
+  if(document.body.classList.contains('mode-both')){ fitBoth(); return; }
+  const r=fitOne(document.body.classList.contains('mode-card'));
+  const chip=$('#fitchip'); chip.textContent=(r.one?t('p1'):t('p2'))+' · '+r.fs.toFixed(1)+'pt'; chip.classList.toggle('warn',!r.one);
+}
+function fitBoth(){
+  const a=fitOne(false), b=fitOne(true), one=a.one&&b.one;
+  const chip=$('#fitchip'); chip.textContent=(one?t('p1'):t('p2'))+' · '+a.fs.toFixed(1)+'/'+b.fs.toFixed(1)+'pt'; chip.classList.toggle('warn',!one);
 }
 
 /* ---------- persistence ---------- */
@@ -597,7 +607,17 @@ document.addEventListener('input',e=>{ if(e.target.id==='c_sdv'){ persistCard();
 $('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photos[cpIdx]=u; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
 // The print button prints whichever view is active.
 $('#bPrint').onclick=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
-window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains('mode-card')) collectCard(); else collect(); fit(); });
+// Download both: Minutes + Learning card in ONE print job, so "Save as PDF" gives a single file (card starts on its own page).
+$('#bPrintBoth').onclick=()=>{
+  if(document.body.classList.contains('mode-card')) collectCard();
+  collect(); renderCard();
+  if(!C.eosm && !C.title){ toast(t('m_cardempty')); return; }
+  document.body.classList.add('mode-both'); fitBoth();
+  document.title='Stand Down MOM + Early Learnings - '+(S.date||C.eosm||'draft');
+  setTimeout(()=>window.print(),50);
+};
+window.addEventListener('afterprint',()=>{ if(document.body.classList.contains('mode-both')){ document.body.classList.remove('mode-both'); fit(); } });
+window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains('mode-both')){ collect(); collectCard(); fitBoth(); return; } if(document.body.classList.contains('mode-card')) collectCard(); else collect(); fit(); });
 
 
 
