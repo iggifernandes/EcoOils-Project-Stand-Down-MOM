@@ -42,9 +42,11 @@ table.info td{border:1px solid var(--line);padding:.22em .5em;vertical-align:top
 table.info td.k{width:20%;font-weight:700;background:#eef3f8}
 
 h2{color:var(--blue);font-size:1.12em;margin:.7em 0 .35em;border-bottom:2px solid var(--blue);padding-bottom:.08em;font-weight:700}
-.inc{position:relative;margin-bottom:.5em;padding-right:1.6em}
-.i-id{font-weight:700}
-.i-title{font-weight:700;color:#222}
+.inc{position:relative;margin-bottom:.5em;padding-right:1.6em;display:flex;flex-wrap:wrap;column-gap:.4em;align-items:baseline}
+.i-id{font-weight:700;flex:0 0 auto}
+.i-id:not(:empty)::after{content:' —';font-weight:400}
+.i-title{font-weight:700;color:#222;flex:1 1 0;min-width:12em}
+.i-desc{flex:0 0 100%}
 .dec{display:flex;gap:.5em;margin:.2em 0;position:relative;padding-right:1.6em}
 .dec .bul{flex:none}
 .d-lead{font-weight:700;display:inline-block;min-width:3em}
@@ -237,7 +239,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.3';
+const APP_VERSION = '1.3.4';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -278,9 +280,10 @@ function applyLang(){
 
 /* ---------- state ---------- */
 const FIELDS = ['project','date','chair','attendees','purpose','outcome','closing'];
+const DEF_PURPOSE='To share early findings and key learnings';
 const blank = () => ({
   id:'', project:'Mentari Project — PT EcoOils Jaya Indonesia', date:'', chair:'Ignatius Fernandes (HSSE Manager)',
-  attendees:'All contractor site personnel — GSB, WEN, KKS, PBS', purpose:'', outcome:'',
+  attendees:'All contractor site personnel — GSB, WEN, KKS, PBS', purpose:DEF_PURPOSE, outcome:'',
   incidents:[{id:'',title:'',desc:''}], decisions:[{lead:'',text:''}], closing:'', photos:[null,null]
 });
 const sample = () => ({
@@ -315,6 +318,7 @@ function xbtn(fn){ const b=document.createElement('button'); b.className='x no-p
 
 function render(){
   FIELDS.forEach(f => $('#f_'+f).textContent = S[f] || '');
+  S.incidents.forEach(x=>{ x.id=String(x.id||'').replace(/(LSR)\s*—\s*LSR\s*$/i,'$1'); });
   const ic=$('#incidents'); ic.innerHTML='';
   S.incidents.forEach((it,i)=>{
     const w=document.createElement('div'); w.className='inc';
@@ -521,7 +525,7 @@ function addToMinutes(eosm, rec){
   const r=rec||IMS.find(x=>x.eosm===eosm); if(!r) return;
   const c=fromIms(r); const learn=stripB(c.learn).slice(0,3).join(' ');
   collect();
-  const item={id:c.eosm+(c.lsr?' — LSR':''), title:c.title, desc:(c.what+(learn?' Key learnings: '+learn:'')).trim()};
+  const item={id:c.eosm+((c.lsr&&!/LSR/i.test(c.eosm))?' — LSR':''), title:c.title, desc:(c.what+(learn?' Key learnings: '+learn:'')).trim()};
   if(S.incidents.length===1 && !S.incidents[0].id && !S.incidents[0].title) S.incidents=[item]; else if(!S.incidents.some(x=>x.id.startsWith(c.eosm))) S.incidents.push(item);
   render(); persist();
 }
@@ -643,7 +647,7 @@ $('#bCheck').onclick=async()=>{
 
 /* ---------- init ---------- */
 $('#ver').textContent='v'+APP_VERSION;
-try{ const d=JSON.parse(localStorage.getItem('sdmom_draft')||'null'); if(d&&d.S){ S={...blank(),...d.S}; synced=d.synced||[false,false]; } }catch(e){}
+try{ const d=JSON.parse(localStorage.getItem('sdmom_draft')||'null'); if(d&&d.S){ S={...blank(),...d.S}; synced=d.synced||[false,false]; if(!S.purpose) S.purpose=DEF_PURPOSE; } }catch(e){}
 try{ const d=JSON.parse(localStorage.getItem('sdcard_draft')||'null'); if(d){ C={...C,...d}; if(!Array.isArray(C.photos)) C.photos=[d.photo||null,null]; if(!C.prep) C.prep=DEF_PREP; } }catch(e){}
 render(); applyLang();
 (async function(){
