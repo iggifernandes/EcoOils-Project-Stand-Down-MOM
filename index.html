@@ -454,21 +454,30 @@ const fromIms = r => { const e=r.earlyLearnings||{}; const strip=x=>stripB(x).jo
     cls:[r.classification||r.type, r.riskLevel?('Potential: '+r.riskLevel):''].filter(Boolean).join(' — '),
     what:e.whatHappened||r.description||'', find:e.earlyFindings||'', learn:e.keyLearnings||'', act:e.immediateActions||strip(r.immediateActions),
     rule:e.lsrRule||'', prep:e.preparedBy||'', sd:e.standDownDate||'', photo:null, lsr:(r.type==='LSR Violation'||r.classification==='LSR Violation') }; };
-async function loadIms(){
+function payloadFromUrl(){
   try{
-    const j=await (await fetch(IMS_ENDPOINT+'?action=list&project='+encodeURIComponent(IMS_PROJECT))).json();
+    const d=new URLSearchParams(location.search).get('d'); if(!d) return null;
+    return JSON.parse(decodeURIComponent(escape(atob(d))));
+  }catch(e){ return null; }
+}
+async function loadIms(quiet){
+  try{
+    const res=await fetch(IMS_ENDPOINT+'?action=list&project='+encodeURIComponent(IMS_PROJECT));
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const j=await res.json();
+    if(!Array.isArray(j.incidents)) throw new Error('unexpected reply'+(j.error?': '+j.error:''));
     IMS=(j.incidents||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.eosm||'').localeCompare(a.eosm||''));
     const sel=$('#cardSel'); sel.innerHTML='<option value="">'+t('m_noinc')+'</option>';
     IMS.forEach(r=>{ const o=document.createElement('option'); o.value=r.eosm; o.textContent=r.eosm+' — '+(r.title||''); sel.append(o); });
     return true;
-  }catch(e){ toast(t('m_imsfail')); return false; }
+  }catch(e){ if(!quiet) toast(t('m_imsfail')+' ('+e.message+')'); return false; }
 }
 function pickIncident(eosm){
   const r=IMS.find(x=>x.eosm===eosm || (x.eosm||'').startsWith(eosm+'-')); if(!r){ toast(t('m_noinc')); return; }
   const keep=C.photo; C=fromIms(r); C.photo=keep; $('#cardSel').value=r.eosm; renderCard(); persistCard();
 }
-function addToMinutes(eosm){
-  const r=IMS.find(x=>x.eosm===eosm); if(!r) return;
+function addToMinutes(eosm, rec){
+  const r=rec||IMS.find(x=>x.eosm===eosm); if(!r) return;
   const c=fromIms(r); const learn=stripB(c.learn).slice(0,3).join(' ');
   collect();
   const item={id:c.eosm+(c.lsr?' — LSR':''), title:c.title, desc:(c.what+(learn?' Key learnings: '+learn:'')).trim()};
@@ -478,7 +487,7 @@ function addToMinutes(eosm){
 function setMode(m){
   document.body.classList.toggle('mode-card',m==='card');
   $('#mMOM').classList.toggle('on',m!=='card'); $('#mCard').classList.toggle('on',m==='card');
-  if(m==='card'){ renderCard(); if(!IMS.length) loadIms().then(()=>{ if(C.eosm) $('#cardSel').value=C.eosm; }); }
+  if(m==='card'){ renderCard(); if(!IMS.length) loadIms(!!C.eosm).then(()=>{ if(C.eosm) $('#cardSel').value=C.eosm; }); }
   fit();
 }
 $('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
@@ -497,10 +506,17 @@ try{ const d=JSON.parse(localStorage.getItem('sdcard_draft')||'null'); if(d) C={
 render(); applyLang();
 (async function(){
   const q=new URLSearchParams(location.search);
-  const card=q.get('card'), mom=q.get('mom');
-  if(card||mom){ await loadIms(); }
-  if(card){ setMode('card'); pickIncident(card); }
-  if(mom){ mom.split(',').forEach(addToMinutes); }
+  const card=q.get('card'), mom=q.get('mom'), pl=payloadFromUrl();
+  if(pl){
+    // Data came with the link from the IMS: no network call needed.
+    if(card){ setMode('card'); C={...fromIms({...pl, earlyLearnings:{whatHappened:pl.whatHappened,earlyFindings:pl.earlyFindings,keyLearnings:pl.keyLearnings,immediateActions:pl.immediateActions,lsrRule:pl.lsrRule,preparedBy:pl.preparedBy,standDownDate:pl.standDownDate}, immediateActions:pl.immediateActionsRecord}), photo:C.photo}; renderCard(); persistCard(); }
+    if(mom){ addToMinutes(mom, {...pl, earlyLearnings:{whatHappened:pl.whatHappened,keyLearnings:pl.keyLearnings}}); }
+    loadIms(true);
+  } else {
+    if(card||mom){ await loadIms(); }
+    if(card){ setMode('card'); pickIncident(card); }
+    if(mom){ mom.split(',').forEach(m=>addToMinutes(m)); }
+  }
 })();
 </script>
 </body>
