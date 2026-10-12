@@ -86,6 +86,9 @@ body.mode-both #sheet,body.mode-both #cardSheet{display:block}
 .cli{margin:.12em 0;padding-left:1.1em;text-indent:-1.1em}
 .rulebox{border:2px solid #c0392b;background:#fdf1ef;border-radius:6px;padding:.4em .7em;margin-top:.6em}
 .rulebox b{color:#c0392b}
+.mprep{margin-top:.8em;border-top:1px solid var(--line);padding-top:.3em;font-size:.9em;color:#445}
+.mprep [contenteditable]{display:inline-block;min-width:8em}
+.mprep,.mprep *{break-inside:avoid}
 .cfoot{margin-top:.7em;border-top:1px solid var(--line);padding-top:.3em;font-size:.82em;color:#445;display:flex;justify-content:space-between;gap:1em}
 .cphotos{display:grid;grid-template-columns:1fr 1fr;gap:.6em;margin-top:.5em}
 .cphotos.one{grid-template-columns:minmax(0,calc(50% - .3em));justify-content:center}
@@ -180,6 +183,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <h2 data-i18n="s4">Photo Evidence — Stand-Down Conducted</h2>
   <div class="photos" id="photos"></div>
   <input type="file" id="fileIn" accept="image/*" hidden>
+  <div class="mprep"><span data-i18n="c_prep">Prepared by</span>: <span id="f_prep" contenteditable></span></div>
 
 </div></div>
 </div>
@@ -245,7 +249,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.8';
+const APP_VERSION = '1.3.9';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -286,15 +290,16 @@ function applyLang(){
 }
 
 /* ---------- state ---------- */
-const FIELDS = ['project','date','chair','attendees','purpose','outcome','closing'];
+const FIELDS = ['project','date','chair','attendees','purpose','outcome','closing','prep'];
+const MOM_PREP = 'Ignatius Fernandes (HSSE Manager)';
 const DEF_PURPOSE='To share early findings and key learnings';
 const blank = () => ({
   id:'', project:'Mentari Project — PT EcoOils Jaya Indonesia', date:'', chair:'Ignatius Fernandes (HSSE Manager)',
-  attendees:'All contractor site personnel — GSB, WEN, KKS, PBS', purpose:DEF_PURPOSE, outcome:'',
+  attendees:'All contractor site personnel — GSB, WEN, KKS, PBS', purpose:DEF_PURPOSE, outcome:'', prep:MOM_PREP,
   incidents:[{id:'',title:'',desc:''}], decisions:[{lead:'',text:''}], closing:'', photos:[null,null]
 });
 const sample = () => ({
-  id:'', project:'Mentari Project — PT EcoOils Jaya Indonesia', date:'21 September 2026', chair:'Ignatius Fernandes (HSSE Manager)',
+  id:'', prep:MOM_PREP, project:'Mentari Project — PT EcoOils Jaya Indonesia', date:'21 September 2026', chair:'Ignatius Fernandes (HSSE Manager)',
   attendees:'All contractor site personnel — GSB, WEN, KKS, PBS',
   purpose:'Four recent incidents on site have exposed repeated gaps in fall protection, vehicle movement control, and site access discipline. This stand-down was mandatory for every crew before work resumed.',
   outcome:'Conducted as planned. All four incidents below were discussed with all contractor site personnel in attendance.',
@@ -435,18 +440,25 @@ $('#fileIn').addEventListener('change', async e=>{
 const PAGE_PX = 277/25.4*96;   // A4 height minus 10 mm margins
 function fitOne(card){
   const sh=card?$('#cardSheet'):$('#sheet'), pg=card?$('#cardPage'):$('#page'); let fs=10.5;
+  pg.style.zoom=1;
   for(; fs>=7; fs-=0.25){ sh.style.fontSize=fs+'pt'; if(pg.offsetHeight<=PAGE_PX) break; }
   fs=Math.max(fs,7); sh.style.fontSize=fs+'pt';
-  return {one: pg.offsetHeight<=PAGE_PX+1, fs};
+  // Still too tall at 7pt? Scale the whole page down so it ALWAYS fits one A4 page (floor 50%).
+  let z=1;
+  if(pg.offsetHeight>PAGE_PX){
+    for(let i=0;i<6;i++){ z=Math.max(0.5, z*(PAGE_PX/pg.offsetHeight)*0.99); pg.style.zoom=z; if(pg.offsetHeight<=PAGE_PX||z<=0.5) break; }
+  }
+  return {one: pg.offsetHeight<=PAGE_PX+1, fs, z};
 }
+const zTxt=r=>r.z<1?' ×'+r.z.toFixed(2):'';
 function fit(){
   if(document.body.classList.contains('mode-both')){ fitBoth(); return; }
   const r=fitOne(document.body.classList.contains('mode-card'));
-  const chip=$('#fitchip'); chip.textContent=(r.one?t('p1'):t('p2'))+' · '+r.fs.toFixed(1)+'pt'; chip.classList.toggle('warn',!r.one);
+  const chip=$('#fitchip'); chip.textContent=(r.one?t('p1'):t('p2'))+' · '+r.fs.toFixed(1)+'pt'+zTxt(r); chip.classList.toggle('warn',!r.one);
 }
 function fitBoth(){
   const a=fitOne(false), b=fitOne(true), one=a.one&&b.one;
-  const chip=$('#fitchip'); chip.textContent=(one?t('p1'):t('p2'))+' · '+a.fs.toFixed(1)+'/'+b.fs.toFixed(1)+'pt'; chip.classList.toggle('warn',!one);
+  const chip=$('#fitchip'); chip.textContent=(one?t('p1'):t('p2'))+' · '+a.fs.toFixed(1)+'/'+b.fs.toFixed(1)+'pt'+zTxt(a)+zTxt(b); chip.classList.toggle('warn',!one);
 }
 
 /* ---------- persistence ---------- */
@@ -722,7 +734,7 @@ $('#bCheck').onclick=async()=>{
 
 /* ---------- init ---------- */
 $('#ver').textContent='v'+APP_VERSION;
-try{ const d=JSON.parse(localStorage.getItem('sdmom_draft')||'null'); if(d&&d.S){ S={...blank(),...d.S}; synced=d.synced||[false,false]; if(!S.purpose) S.purpose=DEF_PURPOSE; } }catch(e){}
+try{ const d=JSON.parse(localStorage.getItem('sdmom_draft')||'null'); if(d&&d.S){ S={...blank(),...d.S}; synced=d.synced||[false,false]; if(!S.purpose) S.purpose=DEF_PURPOSE; if(!S.prep) S.prep=MOM_PREP; } }catch(e){}
 try{ const d=JSON.parse(localStorage.getItem('sdcard_draft')||'null'); if(d){ C={...C,...d}; if(!Array.isArray(C.photos)) C.photos=[d.photo||null,null]; if(!C.prep) C.prep=DEF_PREP; } }catch(e){}
 render(); applyLang();
 (async function(){
