@@ -186,12 +186,12 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   </table>
   <h2 data-i18n="c_what">What happened</h2>
   <div class="cw" id="c_whatv" contenteditable data-ph="Short factual description…"></div>
+  <h2 data-i18n="c_act">Immediate actions taken</h2>
+  <div class="cw" id="c_actv" contenteditable data-ph="One action per line…"></div>
   <h2 data-i18n="c_find">Early findings (preliminary — not final root cause)</h2>
   <div class="cw" id="c_findv" contenteditable data-ph="One finding per line…"></div>
   <h2 data-i18n="c_learn">Key learnings</h2>
   <div class="cw" id="c_learnv" contenteditable data-ph="One learning per line…"></div>
-  <h2 data-i18n="c_act">Immediate actions taken</h2>
-  <div class="cw" id="c_actv" contenteditable data-ph="One action per line…"></div>
   <div class="rulebox"><b data-i18n="c_rule">Life Saving Rule:</b> <span id="c_rulev" contenteditable data-ph="Rule that applies…"></span></div>
   <div class="cphoto empty no-print-empty" id="cphoto"></div>
   <input type="file" id="cfileIn" accept="image/*" hidden>
@@ -232,7 +232,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -592,7 +592,7 @@ function checkText(){
     kind='an incident "Early Learnings" card (one A4 page shown to all crews)';
     body=[
       ['Incident ID',C.eosm],['Title',C.title],['Date / time',C.date],['Location',C.loc],['Contractor',C.con],['Classification',C.cls],
-      ['What happened',C.what],['Early findings',C.find],['Key learnings',C.learn],['Immediate actions',C.act],
+      ['What happened',C.what],['Immediate actions',C.act],['Early findings (preliminary)',C.find],['Key learnings',C.learn],
       ['Life Saving Rule',C.rule],['Prepared by',C.prep],['Stand down date',C.sd]
     ].filter(x=>x[1]).map(x=>'## '+x[0]+'\n'+x[1]).join('\n\n');
   } else {
