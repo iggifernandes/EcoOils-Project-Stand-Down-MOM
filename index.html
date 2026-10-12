@@ -59,6 +59,24 @@ h2{color:var(--blue);font-size:1.12em;margin:.7em 0 .35em;border-bottom:2px soli
 .slot .pick{color:#6b7886;font-size:.9em;text-align:center;cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .slot .x{top:.3em;right:.3em;background:#fffc}
 
+/* ---------- learning card ---------- */
+body.mode-card #sheet{display:none}
+body:not(.mode-card) #cardSheet,body:not(.mode-card) .cardbar{display:none}
+.cardbar{display:inline-flex;gap:8px;align-items:center}
+.cardbar select{font:inherit;font-size:13px;padding:5px 8px;border-radius:6px;max-width:340px}
+.cbadge{display:none;background:#c0392b;color:#fff;font-weight:700;padding:.25em .8em;border-radius:4px;letter-spacing:.5px}
+.cbadge.on{display:inline-block}
+.cw{margin-bottom:.35em}
+.cli{margin:.12em 0;padding-left:1.1em;text-indent:-1.1em}
+.rulebox{border:2px solid #c0392b;background:#fdf1ef;border-radius:6px;padding:.4em .7em;margin-top:.6em}
+.rulebox b{color:#c0392b}
+.cfoot{margin-top:.7em;border-top:1px solid var(--line);padding-top:.3em;font-size:.82em;color:#445;display:flex;justify-content:space-between;gap:1em}
+.cphoto{border:1px solid #bbb;background:#f5f6f8;height:13em;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;margin-top:.5em}
+.cphoto img{width:100%;height:100%;object-fit:cover}
+.cphoto .pick{color:#6b7886;cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.cphoto.empty{}
+@media print{.cphoto.empty{display:none}}
+
 /* ---------- dialogs ---------- */
 dialog{border:0;border-radius:10px;padding:18px 20px;max-width:560px;width:92%;box-shadow:0 10px 40px #0006}
 dialog h3{margin:0 0 10px}
@@ -75,7 +93,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 @page{size:A4;margin:10mm}
 @media print{
   body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .no-print,.toolbar{display:none!important}
+  .no-print,.toolbar,.cardbar{display:none!important}
   .stage{padding:0;overflow:visible}
   .sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}
   [contenteditable]:hover,[contenteditable]:focus{background:none;box-shadow:none}
@@ -96,6 +114,8 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <button id="bLoad" data-i18n="ui_load">Load</button>
   <button id="bPrint" class="primary" data-i18n="ui_print">Print / PDF</button>
   <button id="bSet" data-i18n="ui_settings">Settings</button>
+  <span class="seg"><button id="mMOM" class="on" data-i18n="ui_minutes">Minutes</button><button id="mCard" data-i18n="ui_card">Learning card</button></span>
+  <span class="cardbar"><select id="cardSel" title="Incident"></select><button id="cardReload" data-i18n="ui_fetch">Reload from IMS</button></span>
   <span class="seg"><button id="lEN" class="on">EN</button><button id="lID">ID</button></span>
   <span id="status"></span>
   <span class="spacer"></span>
@@ -139,6 +159,34 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </div></div>
 </div>
 
+<div class="stage" id="cardStage">
+<div class="sheet" id="cardSheet"><div id="cardPage">
+  <div class="hdr"><img id="logo2" src="logo.png" alt="EcoOils Mentari"><span class="cbadge" id="c_badge">LSR</span></div>
+  <h1 data-i18n="c_doc">INCIDENT EARLY LEARNINGS</h1>
+  <div class="proj" id="c_project" contenteditable>Mentari Project — PT EcoOils Jaya Indonesia</div>
+  <table class="info">
+    <tr><td class="k" data-i18n="c_no">Incident No.</td><td><div id="c_eosm" contenteditable></div></td></tr>
+    <tr><td class="k" data-i18n="c_ttl">Title</td><td><div id="c_title" contenteditable></div></td></tr>
+    <tr><td class="k" data-i18n="c_dt">Date &amp; Time</td><td><div id="c_date" contenteditable></div></td></tr>
+    <tr><td class="k" data-i18n="c_loc">Location</td><td><div id="c_loc" contenteditable></div></td></tr>
+    <tr><td class="k" data-i18n="c_con">Contractor</td><td><div id="c_con" contenteditable></div></td></tr>
+    <tr><td class="k" data-i18n="c_cls">Classification</td><td><div id="c_cls" contenteditable></div></td></tr>
+  </table>
+  <h2 data-i18n="c_what">What happened</h2>
+  <div class="cw" id="c_whatv" contenteditable data-ph="Short factual description…"></div>
+  <h2 data-i18n="c_find">Early findings (preliminary — not final root cause)</h2>
+  <div class="cw" id="c_findv" contenteditable data-ph="One finding per line…"></div>
+  <h2 data-i18n="c_learn">Key learnings</h2>
+  <div class="cw" id="c_learnv" contenteditable data-ph="One learning per line…"></div>
+  <h2 data-i18n="c_act">Immediate actions taken</h2>
+  <div class="cw" id="c_actv" contenteditable data-ph="One action per line…"></div>
+  <div class="rulebox"><b data-i18n="c_rule">Life Saving Rule:</b> <span id="c_rulev" contenteditable data-ph="Rule that applies…"></span></div>
+  <div class="cphoto empty no-print-empty" id="cphoto"></div>
+  <input type="file" id="cfileIn" accept="image/*" hidden>
+  <div class="cfoot"><span><span data-i18n="c_prep">Prepared by</span>: <span id="c_prep" contenteditable></span></span><span><span data-i18n="c_sd">Stand-down</span>: <span id="c_sdv" contenteditable></span></span><span id="c_stat" data-i18n="c_prelim">Preliminary — subject to investigation</span></div>
+</div></div>
+</div>
+
 <!-- Settings -->
 <dialog id="dSet">
   <h3 data-i18n="ui_settings">Settings</h3>
@@ -160,7 +208,11 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
+// Link to the Incident Management app (IMS): the register is read, never written, from here.
+const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzcSP8nTLoD77Dvk_NIDjYhCxbcBs6h38KaNIBFp_RHS_-8ihtdH6wn2Q5QPvhxnyXsXw/exec';
+const IMS_PROJECT = 'ecooils-mentari';
+const IMS_BASE = 'https://iggifernandes.github.io/EcoOils-Project-IMS/';
 const DEFAULT_GS_URL = '';   // <- paste your deployed Apps Script URL here once (optional)
 const $ = s => document.querySelector(s);
 const MAX_PHOTOS = 2;
@@ -172,13 +224,19 @@ const I18N = {
   ui_new:'New',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',
   ui_addphoto:'+ Add photo',ui_logo:'Replace logo (optional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: or put your logo in the repo as logo.png.',
   m_saved:'Saved to sheet',m_saving:'Saving…',m_nourl:'Set the Web App URL in Settings first',m_confirmnew:'Start a new blank MOM? Unsaved changes will be lost.',
-  m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2'},
+  m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2',
+  ui_minutes:'Minutes',ui_card:'Learning card',ui_fetch:'Reload from IMS',c_doc:'INCIDENT EARLY LEARNINGS',c_no:'Incident No.',c_ttl:'Title',c_dt:'Date & Time',c_loc:'Location',c_con:'Contractor',c_cls:'Classification',
+  c_what:'What happened',c_find:'Early findings (preliminary — not final root cause)',c_learn:'Key learnings',c_act:'Immediate actions taken',c_rule:'Life Saving Rule:',c_prep:'Prepared by',c_sd:'Stand-down',c_prelim:'Preliminary — subject to investigation',
+  m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',m_addphoto:'+ Add photo'},
  id:{doc_title:'NOTULEN RAPAT STAND DOWN',l_date:'Tanggal & Waktu',l_chair:'Dipimpin Oleh',l_att:'Peserta',l_purpose:'Tujuan',l_outcome:'Hasil',
   s1:'1. Insiden yang Dibahas',s2:'2. Keputusan dan Tindakan yang Disepakati',s3:'3. Catatan Penutup',s4:'Bukti Foto — Stand Down Dilaksanakan',
   ui_new:'Baru',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',
   ui_addphoto:'+ Tambah foto',ui_logo:'Ganti logo (opsional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: atau taruh logo di repo sebagai logo.png.',
   m_saved:'Tersimpan di sheet',m_saving:'Menyimpan…',m_nourl:'Isi URL Web App di Pengaturan dulu',m_confirmnew:'Mulai notulen baru? Perubahan yang belum disimpan akan hilang.',
-  m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2'}
+  m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2',
+  ui_minutes:'Notulen',ui_card:'Kartu pembelajaran',ui_fetch:'Muat ulang dari IMS',c_doc:'PEMBELAJARAN AWAL INSIDEN',c_no:'No. Insiden',c_ttl:'Judul',c_dt:'Tanggal & Waktu',c_loc:'Lokasi',c_con:'Kontraktor',c_cls:'Klasifikasi',
+  c_what:'Apa yang terjadi',c_find:'Temuan awal (sementara — bukan akar masalah final)',c_learn:'Pembelajaran utama',c_act:'Tindakan segera yang dilakukan',c_rule:'Aturan Penyelamat Jiwa:',c_prep:'Disusun oleh',c_sd:'Stand down',c_prelim:'Sementara — menunggu hasil investigasi',
+  m_imsfail:'Tidak dapat terhubung ke register insiden',m_noinc:'Pilih insiden',m_addphoto:'+ Tambah foto'}
 };
 let lang = localStorage.getItem('sdmom_lang') || 'en';
 const t = k => (I18N[lang][k] ?? I18N.en[k] ?? k);
@@ -284,7 +342,8 @@ $('#fileIn').addEventListener('change', async e=>{
 /* ---------- fit to one page ---------- */
 const PAGE_PX = 277/25.4*96;   // A4 height minus 10 mm margins
 function fit(){
-  const sh=$('#sheet'), pg=$('#page'); let fs=10.5;
+  const card=document.body.classList.contains('mode-card');
+  const sh=card?$('#cardSheet'):$('#sheet'), pg=card?$('#cardPage'):$('#page'); let fs=10.5;
   for(; fs>=7; fs-=0.25){ sh.style.fontSize=fs+'pt'; if(pg.offsetHeight<=PAGE_PX) break; }
   fs=Math.max(fs,7); sh.style.fontSize=fs+'pt';
   const one = pg.offsetHeight<=PAGE_PX+1;
@@ -357,16 +416,92 @@ const FALLBACK_LOGO = 'data:image/svg+xml;utf8,'+encodeURIComponent(
 const logo=$('#logo');
 logo.onerror=()=>{ logo.onerror=null; logo.src=FALLBACK_LOGO; };
 (function(){ const l=localStorage.getItem('sdmom_logo'); if(l) logo.src=l; })();
-logo.onload=()=>fit();
+logo.onload=()=>{ const l2=$('#logo2'); if(l2) l2.src=logo.src; fit(); };
 $('#logoIn').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return;
   const k=await createImageBitmap(f); const s=Math.min(1,900/k.width); const c=document.createElement('canvas'); c.width=k.width*s; c.height=k.height*s;
   c.getContext('2d').drawImage(k,0,0,c.width,c.height); const d=c.toDataURL('image/png'); localStorage.setItem('sdmom_logo',d); logo.src=d; });
 $('#logoReset').onclick=()=>{ localStorage.removeItem('sdmom_logo'); logo.onerror=()=>{logo.onerror=null;logo.src=FALLBACK_LOGO;}; logo.src='logo.png?'+Date.now(); };
 
+/* ---------- Incident early-learnings card (data comes from the IMS register) ---------- */
+let IMS = [];            // incidents read from the IMS
+let C = {eosm:'',title:'',date:'',loc:'',con:'',cls:'',what:'',find:'',learn:'',act:'',rule:'',prep:'',sd:'',photo:null,lsr:false};
+const stripB = x => String(x||'').split('\n').map(l=>l.replace(/^\s*(?:[•\-*]|\d+[.)])\s*/,'').trim()).filter(Boolean);
+function listHtml(el, text, numbered){
+  el.innerHTML=''; const lines=stripB(text);
+  if(!lines.length){ el.textContent=''; return; }
+  lines.forEach((l,i)=>{ const d=document.createElement('div'); d.className='cli'; d.textContent=(numbered?(i+1)+'. ':'• ')+l; el.append(d); });
+}
+function listText(el){ return [...el.querySelectorAll('.cli')].map(d=>d.innerText).concat(el.querySelector('.cli')?[]:[el.innerText]).join('\n'); }
+function renderCard(){
+  $('#c_eosm').textContent=C.eosm; $('#c_title').textContent=C.title; $('#c_date').textContent=C.date; $('#c_loc').textContent=C.loc;
+  $('#c_con').textContent=C.con; $('#c_cls').textContent=C.cls; $('#c_whatv').textContent=C.what;
+  listHtml($('#c_findv'),C.find,false); listHtml($('#c_learnv'),C.learn,true); listHtml($('#c_actv'),C.act,false);
+  $('#c_rulev').textContent=C.rule; $('#c_prep').textContent=C.prep; $('#c_sdv').textContent=C.sd;
+  $('#c_badge').classList.toggle('on',!!C.lsr);
+  const ph=$('#cphoto'); ph.innerHTML=''; ph.classList.toggle('empty',!C.photo);
+  if(C.photo){ const im=document.createElement('img'); im.src=C.photo; ph.append(im, xbtn(()=>{C.photo=null; renderCard(); persistCard();})); }
+  else { const pk=document.createElement('div'); pk.className='pick no-print'; pk.textContent=t('m_addphoto'); pk.onclick=()=>$('#cfileIn').click(); ph.append(pk); }
+  $('#logo2').src=$('#logo').src; fit();
+}
+function collectCard(){
+  C.eosm=txt($('#c_eosm')); C.title=txt($('#c_title')); C.date=txt($('#c_date')); C.loc=txt($('#c_loc')); C.con=txt($('#c_con')); C.cls=txt($('#c_cls'));
+  C.what=txt($('#c_whatv')); C.find=stripB(listText($('#c_findv'))).join('\n'); C.learn=stripB(listText($('#c_learnv'))).join('\n'); C.act=stripB(listText($('#c_actv'))).join('\n');
+  C.rule=txt($('#c_rulev')); C.prep=txt($('#c_prep')); C.sd=txt($('#c_sdv'));
+}
+let cpt; function persistCard(){ clearTimeout(cpt); cpt=setTimeout(()=>{ try{ collectCard(); localStorage.setItem('sdcard_draft',JSON.stringify(C)); }catch(e){} },400); }
+const fromIms = r => { const e=r.earlyLearnings||{}; const strip=x=>stripB(x).join('\n');
+  return { eosm:r.eosm||'', title:r.title||'', date:[r.date,r.time].filter(Boolean).join(' · '), loc:r.location||'', con:r.contractor||'',
+    cls:[r.classification||r.type, r.riskLevel?('Potential: '+r.riskLevel):''].filter(Boolean).join(' — '),
+    what:e.whatHappened||r.description||'', find:e.earlyFindings||'', learn:e.keyLearnings||'', act:e.immediateActions||strip(r.immediateActions),
+    rule:e.lsrRule||'', prep:e.preparedBy||'', sd:e.standDownDate||'', photo:null, lsr:(r.type==='LSR Violation'||r.classification==='LSR Violation') }; };
+async function loadIms(){
+  try{
+    const j=await (await fetch(IMS_ENDPOINT+'?action=list&project='+encodeURIComponent(IMS_PROJECT))).json();
+    IMS=(j.incidents||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.eosm||'').localeCompare(a.eosm||''));
+    const sel=$('#cardSel'); sel.innerHTML='<option value="">'+t('m_noinc')+'</option>';
+    IMS.forEach(r=>{ const o=document.createElement('option'); o.value=r.eosm; o.textContent=r.eosm+' — '+(r.title||''); sel.append(o); });
+    return true;
+  }catch(e){ toast(t('m_imsfail')); return false; }
+}
+function pickIncident(eosm){
+  const r=IMS.find(x=>x.eosm===eosm || (x.eosm||'').startsWith(eosm+'-')); if(!r){ toast(t('m_noinc')); return; }
+  const keep=C.photo; C=fromIms(r); C.photo=keep; $('#cardSel').value=r.eosm; renderCard(); persistCard();
+}
+function addToMinutes(eosm){
+  const r=IMS.find(x=>x.eosm===eosm); if(!r) return;
+  const c=fromIms(r); const learn=stripB(c.learn).slice(0,3).join(' ');
+  collect();
+  const item={id:c.eosm+(c.lsr?' — LSR':''), title:c.title, desc:(c.what+(learn?' Key learnings: '+learn:'')).trim()};
+  if(S.incidents.length===1 && !S.incidents[0].id && !S.incidents[0].title) S.incidents=[item]; else if(!S.incidents.some(x=>x.id.startsWith(c.eosm))) S.incidents.push(item);
+  render(); persist();
+}
+function setMode(m){
+  document.body.classList.toggle('mode-card',m==='card');
+  $('#mMOM').classList.toggle('on',m!=='card'); $('#mCard').classList.toggle('on',m==='card');
+  if(m==='card'){ renderCard(); if(!IMS.length) loadIms().then(()=>{ if(C.eosm) $('#cardSel').value=C.eosm; }); }
+  fit();
+}
+$('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
+$('#cardSel').onchange=e=>{ if(e.target.value) pickIncident(e.target.value); };
+$('#cardReload').onclick=async()=>{ const cur=C.eosm; if(await loadIms() && cur) pickIncident(cur); };
+document.addEventListener('input',e=>{ if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
+$('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ C.photo=await shrink(f); renderCard(); persistCard(); }catch(err){ toast(t('m_err')+err.message); } });
+// The print button prints whichever view is active.
+$('#bPrint').onclick=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
+window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains('mode-card')) collectCard(); else collect(); fit(); });
+
 /* ---------- init ---------- */
 $('#ver').textContent='v'+APP_VERSION;
 try{ const d=JSON.parse(localStorage.getItem('sdmom_draft')||'null'); if(d&&d.S){ S={...blank(),...d.S}; synced=d.synced||[false,false]; } }catch(e){}
+try{ const d=JSON.parse(localStorage.getItem('sdcard_draft')||'null'); if(d) C={...C,...d}; }catch(e){}
 render(); applyLang();
+(async function(){
+  const q=new URLSearchParams(location.search);
+  const card=q.get('card'), mom=q.get('mom');
+  if(card||mom){ await loadIms(); }
+  if(card){ setMode('card'); pickIncident(card); }
+  if(mom){ mom.split(',').forEach(addToMinutes); }
+})();
 </script>
 </body>
 </html>
