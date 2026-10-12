@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stand Down MOM — EcoOils Mentari</title>
+<style>
+:root{--blue:#2b5a8c;--green:#4ba37b;--yellow:#ffc20e;--ink:#1d1d1d;--line:#9aa5b1;--tb:#14324f}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:"Century Gothic","Segoe UI",Calibri,Arial,sans-serif;background:#d9dee4;color:var(--ink)}
+
+/* ---------- toolbar (screen only) ---------- */
+.toolbar{position:sticky;top:0;z-index:10;background:var(--tb);color:#fff;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 14px;box-shadow:0 2px 6px #0004}
+.toolbar .brand{font-weight:700;margin-right:6px}
+.toolbar button,.toolbar .seg label{font:inherit;font-size:13px;border:1px solid #ffffff55;background:#ffffff14;color:#fff;border-radius:6px;padding:6px 11px;cursor:pointer}
+.toolbar button:hover{background:#ffffff30}
+.toolbar button.primary{background:var(--green);border-color:var(--green);font-weight:600}
+.seg{display:inline-flex}.seg button{border-radius:0}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}
+.seg button.on{background:var(--yellow);color:#222;border-color:var(--yellow);font-weight:700}
+.spacer{flex:1}
+#status{font-size:12px;opacity:.9}
+#fitchip{font-size:12px;padding:3px 8px;border-radius:10px;background:#ffffff22}
+#fitchip.warn{background:#c0392b}
+.ver{font-size:12px;font-weight:700;background:var(--yellow);color:#222;padding:3px 9px;border-radius:10px}
+
+/* ---------- paper ---------- */
+.stage{padding:18px;overflow:auto}
+.sheet{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:10mm;box-shadow:0 4px 18px #0004;font-size:10pt;line-height:1.28}
+[contenteditable]{outline:none;white-space:pre-wrap;word-break:break-word}
+[contenteditable]:hover{background:#fff8d6}
+[contenteditable]:focus{background:#fff3b0;box-shadow:0 0 0 1px #e0b400}
+[contenteditable]:empty:before{content:attr(data-ph);color:#b3b3b3}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5em}
+.hdr img,.hdr svg{height:3.6em;width:auto;display:block}
+h1{font-size:1.35em;margin:.15em 0 .05em;letter-spacing:.2px;font-weight:700}
+.proj{font-weight:600;font-size:1.05em;margin-bottom:.45em}
+
+table.info{width:100%;border-collapse:collapse;margin-bottom:.4em}
+table.info td{border:1px solid var(--line);padding:.22em .5em;vertical-align:top}
+table.info td.k{width:20%;font-weight:700;background:#eef3f8}
+
+h2{color:var(--blue);font-size:1.12em;margin:.7em 0 .35em;border-bottom:2px solid var(--blue);padding-bottom:.08em;font-weight:700}
+.inc{position:relative;margin-bottom:.5em;padding-right:1.6em}
+.i-id{font-weight:700}
+.i-title{font-weight:700;color:#222}
+.dec{display:flex;gap:.5em;margin:.2em 0;position:relative;padding-right:1.6em}
+.dec .bul{flex:none}
+.d-lead{font-weight:700;display:inline-block;min-width:3em}
+.d-lead:after{content:":"}
+.d-text{display:inline-block;min-width:3em}
+.x{position:absolute;right:0;top:0;border:0;background:#e9d3d0;color:#a52a1d;border-radius:50%;width:1.5em;height:1.5em;line-height:1.3em;cursor:pointer;font-size:.95em;padding:0}
+.add{border:1px dashed var(--blue);background:#f2f7fc;color:var(--blue);border-radius:6px;padding:.25em .8em;cursor:pointer;font:inherit;font-size:.85em;margin-top:.2em}
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:.6em;border:1px solid #222;padding:.5em}
+.photos.one{grid-template-columns:minmax(0,62%);justify-content:center}
+.slot{position:relative;border:1px solid #bbb;height:17em;background:#f5f6f8;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.slot img{width:100%;height:100%;object-fit:cover;display:block}
+.slot .pick{color:#6b7886;font-size:.9em;text-align:center;cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.slot .x{top:.3em;right:.3em;background:#fffc}
+
+/* ---------- dialogs ---------- */
+dialog{border:0;border-radius:10px;padding:18px 20px;max-width:560px;width:92%;box-shadow:0 10px 40px #0006}
+dialog h3{margin:0 0 10px}
+dialog label{display:block;font-size:13px;margin:10px 0 3px;font-weight:600}
+dialog input[type=text],dialog input[type=password]{width:100%;padding:7px;border:1px solid #aab;border-radius:6px;font:inherit}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+dialog button{font:inherit;padding:6px 14px;border-radius:6px;border:1px solid #aab;background:#f0f2f5;cursor:pointer}
+dialog button.primary{background:var(--green);color:#fff;border-color:var(--green)}
+.rec{display:flex;justify-content:space-between;gap:8px;padding:8px;border-bottom:1px solid #e3e6ea;cursor:pointer}
+.rec:hover{background:#f2f7fc}.rec small{color:#667}
+.hint{font-size:12px;color:#556;margin-top:4px}
+
+/* ---------- print: A4, 10 mm margin, clean ---------- */
+@page{size:A4;margin:10mm}
+@media print{
+  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .no-print,.toolbar{display:none!important}
+  .stage{padding:0;overflow:visible}
+  .sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}
+  [contenteditable]:hover,[contenteditable]:focus{background:none;box-shadow:none}
+  [contenteditable]:empty:before{content:none}
+  .slot.empty{display:none}
+  .slot{border:1px solid #ccc;background:none}
+  .inc,.dec,.photos,table.info tr{break-inside:avoid}
+  .inc,.dec{padding-right:0}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <span class="brand">Stand Down MOM</span>
+  <button id="bNew" data-i18n="ui_new">New</button>
+  <button id="bSave" class="primary" data-i18n="ui_save">Save to Sheet</button>
+  <button id="bLoad" data-i18n="ui_load">Load</button>
+  <button id="bPrint" class="primary" data-i18n="ui_print">Print / PDF</button>
+  <button id="bSet" data-i18n="ui_settings">Settings</button>
+  <span class="seg"><button id="lEN" class="on">EN</button><button id="lID">ID</button></span>
+  <span id="status"></span>
+  <span class="spacer"></span>
+  <span id="fitchip"></span>
+  <span class="ver" id="ver"></span>
+</div>
+
+<div class="stage">
+<div class="sheet" id="sheet"><div id="page">
+
+  <div class="hdr">
+    <img id="logo" src="logo.png" alt="EcoOils Mentari">
+  </div>
+
+  <h1 data-i18n="doc_title">MINUTES OF THE STAND DOWN MEETING</h1>
+  <div class="proj" id="f_project" contenteditable data-ph="Project — Company"></div>
+
+  <table class="info">
+    <tr><td class="k" data-i18n="l_date">Date &amp; Time</td><td><div id="f_date" contenteditable data-ph="21 September 2026"></div></td></tr>
+    <tr><td class="k" data-i18n="l_chair">Chaired By</td><td><div id="f_chair" contenteditable></div></td></tr>
+    <tr><td class="k" data-i18n="l_att">Attendees</td><td><div id="f_attendees" contenteditable></div></td></tr>
+    <tr><td class="k" data-i18n="l_purpose">Purpose</td><td><div id="f_purpose" contenteditable data-ph="Why this stand-down was held…"></div></td></tr>
+    <tr><td class="k" data-i18n="l_outcome">Outcome</td><td><div id="f_outcome" contenteditable data-ph="Conducted as planned…"></div></td></tr>
+  </table>
+
+  <h2 data-i18n="s1">1. Incidents Discussed</h2>
+  <div id="incidents"></div>
+  <button class="add no-print" id="addInc" data-i18n="ui_addinc">+ Add incident</button>
+
+  <h2 data-i18n="s2">2. Decisions and Actions Agreed</h2>
+  <div id="decisions"></div>
+  <button class="add no-print" id="addDec" data-i18n="ui_adddec">+ Add decision</button>
+
+  <h2 data-i18n="s3">3. Closing Remarks</h2>
+  <div id="f_closing" contenteditable data-ph="Closing remarks…"></div>
+
+  <h2 data-i18n="s4">Photo Evidence — Stand-Down Conducted</h2>
+  <div class="photos" id="photos"></div>
+  <input type="file" id="fileIn" accept="image/*" hidden>
+
+</div></div>
+</div>
+
+<!-- Settings -->
+<dialog id="dSet">
+  <h3 data-i18n="ui_settings">Settings</h3>
+  <label>Google Apps Script Web App URL</label>
+  <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/…/exec">
+  <label>Access key (same as SECRET in Code.gs)</label>
+  <input type="password" id="cfgKey">
+  <label data-i18n="ui_logo">Replace logo (optional)</label>
+  <input type="file" id="logoIn" accept="image/*">
+  <div class="hint" data-i18n="ui_logohint">Tip: or put your logo in the repo as logo.png.</div>
+  <div class="row"><button id="logoReset" data-i18n="ui_logoreset">Reset logo</button><button class="primary" id="cfgOk">OK</button></div>
+</dialog>
+
+<!-- Load -->
+<dialog id="dLoad">
+  <h3 data-i18n="ui_load">Load</h3>
+  <div id="recList" class="hint">…</div>
+  <div class="row"><button id="loadClose">Close</button></div>
+</dialog>
+
+<script>
+const APP_VERSION = '1.0.0';
+const DEFAULT_GS_URL = '';   // <- paste your deployed Apps Script URL here once (optional)
+const $ = s => document.querySelector(s);
+const MAX_PHOTOS = 2;
+
+/* ---------- i18n ---------- */
+const I18N = {
+ en:{doc_title:'MINUTES OF THE STAND DOWN MEETING',l_date:'Date & Time',l_chair:'Chaired By',l_att:'Attendees',l_purpose:'Purpose',l_outcome:'Outcome',
+  s1:'1. Incidents Discussed',s2:'2. Decisions and Actions Agreed',s3:'3. Closing Remarks',s4:'Photo Evidence — Stand-Down Conducted',
+  ui_new:'New',ui_save:'Save to Sheet',ui_load:'Load',ui_print:'Print / PDF',ui_settings:'Settings',ui_addinc:'+ Add incident',ui_adddec:'+ Add decision',
+  ui_addphoto:'+ Add photo',ui_logo:'Replace logo (optional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: or put your logo in the repo as logo.png.',
+  m_saved:'Saved to sheet',m_saving:'Saving…',m_nourl:'Set the Web App URL in Settings first',m_confirmnew:'Start a new blank MOM? Unsaved changes will be lost.',
+  m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2'},
+ id:{doc_title:'NOTULEN RAPAT STAND DOWN',l_date:'Tanggal & Waktu',l_chair:'Dipimpin Oleh',l_att:'Peserta',l_purpose:'Tujuan',l_outcome:'Hasil',
+  s1:'1. Insiden yang Dibahas',s2:'2. Keputusan dan Tindakan yang Disepakati',s3:'3. Catatan Penutup',s4:'Bukti Foto — Stand Down Dilaksanakan',
+  ui_new:'Baru',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',
+  ui_addphoto:'+ Tambah foto',ui_logo:'Ganti logo (opsional)',ui_logoreset:'Reset logo',ui_logohint:'Tip: atau taruh logo di repo sebagai logo.png.',
+  m_saved:'Tersimpan di sheet',m_saving:'Menyimpan…',m_nourl:'Isi URL Web App di Pengaturan dulu',m_confirmnew:'Mulai notulen baru? Perubahan yang belum disimpan akan hilang.',
+  m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2'}
+};
+let lang = localStorage.getItem('sdmom_lang') || 'en';
+const t = k => (I18N[lang][k] ?? I18N.en[k] ?? k);
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
+  $('#lEN').classList.toggle('on', lang==='en'); $('#lID').classList.toggle('on', lang==='id');
+  renderPhotos(); fit();
+}
+
+/* ---------- state ---------- */
+const FIELDS = ['project','date','chair','attendees','purpose','outcome','closing'];
+const blank = () => ({
+  id:'', project:'Mentari Project — PT EcoOils Jaya Indonesia', date:'', chair:'Ignatius Fernandes (HSSE Manager)',
+  attendees:'All contractor site personnel — GSB, WEN, KKS, PBS', purpose:'', outcome:'',
+  incidents:[{id:'',title:'',desc:''}], decisions:[{lead:'',text:''}], closing:'', photos:[null,null]
+});
+const sample = () => ({
+  id:'', project:'Mentari Project — PT EcoOils Jaya Indonesia', date:'21 September 2026', chair:'Ignatius Fernandes (HSSE Manager)',
+  attendees:'All contractor site personnel — GSB, WEN, KKS, PBS',
+  purpose:'Four recent incidents on site have exposed repeated gaps in fall protection, vehicle movement control, and site access discipline. This stand-down was mandatory for every crew before work resumed.',
+  outcome:'Conducted as planned. All four incidents below were discussed with all contractor site personnel in attendance.',
+  incidents:[
+   {id:'EOSM-072-GSB-NM — LSR',title:'Working at Height Without 100% Tie-Off of Fall Arrest Body Harness',desc:'A crew member was found working at height without their fall arrest harness hooked to an approved anchor point. This is a direct breach of a Life Saving Rule.'},
+   {id:'EOSM-073-GSB-NM',title:'Dropped Object — 6-Ton Chain Block',desc:'A 6-ton chain block detached during installation work and fell approximately 17 meters to the ground. No one was struck, but the drop zone was occupied moments earlier.'},
+   {id:'EOSM-074-PBS-NM',title:'Un-inducted Vendor Personnel Granted Unauthorized Site Access',desc:'Three vendor personnel were escorted directly onto site at Block 6B by the Contractor Logistics Lead, bypassing mandatory site induction. The associated PTW had been authorized but never communicated to HSSE for verification and had been signed as Job Coordinator by the Logistics Lead despite the absence of PTW training.'},
+   {id:'EOSM-075-PBS-PD — PRIORITY',title:'Dump Truck Rollover While Reversing Near Excavated Road',desc:'A dump truck reversed too close to the edge of an excavated road without a spotter, resulting in the vehicle overturning onto its side. The driver was uninjured; the truck has been sent off site to the service garage for evaluation as a precaution. This incident was flagged as the highest-priority item for discussion.'}],
+  decisions:[
+   {lead:'No Flagman, No Movement',text:'Every vehicle on site must have its own dedicated flagman before any movement — reversing, maneuvering near excavations, or operating near other crews. The responsibility to ensure the flagman is present and actively guiding the vehicle lies with the operator, not the flagman alone. No exceptions, regardless of route familiarity or urgency.'},
+   {lead:'One Flagman per Vehicle — No Sharing',text:'Each vehicle must have its own dedicated flagman; flagmen may not be shared or split across multiple vehicles at the same time.'},
+   {lead:'Reserve Flagman Pool',text:'Additional flagmen will be trained and held on reserve. Reserve flagmen perform their normal daily activities until needed and are deployed immediately whenever a designated flagman is absent or additional coverage is required.'},
+   {lead:'Any Violation Will Be Treated with a Warning',text:'Any crew member found violating the flagman requirement, or any other Life Saving Rule, will be issued a formal warning.'},
+   {lead:'Third Warning (SP3) = Site Removal',text:'Any crew member who accumulates a third warning (SP3) will not be permitted to enter the site — this applies to every role without exception, including critical operators such as excavator and crane operators.'},
+   {lead:'Unhooked Harness at Height = Termination Evaluation',text:'Any crew member found working at height without their fall arrest harness hooked to an approved anchor point will be placed under evaluation for termination, as this constitutes a breach of a Life Saving Rule.'}],
+  closing:'Please take this seriously. Four incidents in a short window is a pattern, not a coincidence — full compliance is expected from every crew, on every task, starting immediately.',
+  photos:[null,null]
+});
+let S = sample();
+let synced = [false,false];   // photo already stored in the sheet/Drive (so we send "keep")
+
+/* ---------- render / collect ---------- */
+const txt = el => el.innerText.replace(/\u00a0/g,' ').replace(/\n+$/,'').trim();
+function ce(cls, ph, val){ const d=document.createElement('div'); d.className=cls; d.contentEditable='true'; if(ph) d.dataset.ph=ph; d.textContent=val||''; return d; }
+function span(cls, ph, val, tag='span'){ const d=document.createElement(tag); d.className=cls; d.contentEditable='true'; if(ph) d.dataset.ph=ph; d.textContent=val||''; return d; }
+function xbtn(fn){ const b=document.createElement('button'); b.className='x no-print'; b.textContent='×'; b.title='Remove'; b.onclick=fn; return b; }
+
+function render(){
+  FIELDS.forEach(f => $('#f_'+f).textContent = S[f] || '');
+  const ic=$('#incidents'); ic.innerHTML='';
+  S.incidents.forEach((it,i)=>{
+    const w=document.createElement('div'); w.className='inc';
+    w.append(ce('i-id','EOSM-000-XXX-NM',it.id), ce('i-title','Incident title',it.title), ce('i-desc','Description…',it.desc),
+             xbtn(()=>{collect(); S.incidents.splice(i,1); render(); fit(); persist();}));
+    ic.append(w);
+  });
+  const dc=$('#decisions'); dc.innerHTML='';
+  S.decisions.forEach((it,i)=>{
+    const w=document.createElement('div'); w.className='dec';
+    const b=document.createElement('span'); b.className='bul'; b.textContent='•';
+    const body=document.createElement('div'); body.append(span('d-lead','Heading',it.lead,'b'), document.createTextNode(' '), span('d-text','Detail…',it.text));
+    w.append(b, body, xbtn(()=>{collect(); S.decisions.splice(i,1); render(); fit(); persist();}));
+    dc.append(w);
+  });
+  renderPhotos();
+  fit();
+}
+function collect(){
+  FIELDS.forEach(f => S[f] = txt($('#f_'+f)));
+  S.incidents = [...document.querySelectorAll('#incidents .inc')].map(w => ({id:txt(w.querySelector('.i-id')),title:txt(w.querySelector('.i-title')),desc:txt(w.querySelector('.i-desc'))}));
+  S.decisions = [...document.querySelectorAll('#decisions .dec')].map(w => ({lead:txt(w.querySelector('.d-lead')),text:txt(w.querySelector('.d-text'))}));
+}
+
+/* ---------- photos (max 2) ---------- */
+let pickIdx = 0;
+function renderPhotos(){
+  const box=$('#photos'); box.innerHTML='';
+  const filled = S.photos.filter(Boolean).length;
+  box.className = 'photos' + (filled===1 ? ' one' : '');
+  S.photos.slice(0,MAX_PHOTOS).forEach((p,i)=>{
+    const s=document.createElement('div'); s.className='slot'+(p?'':' empty');
+    if(p){ const im=document.createElement('img'); im.src=p; s.append(im, xbtn(()=>{S.photos[i]=null; synced[i]=false; renderPhotos(); fit(); persist();})); }
+    else { const pk=document.createElement('div'); pk.className='pick no-print'; pk.textContent=t('ui_addphoto'); pk.onclick=()=>{pickIdx=i; $('#fileIn').click();}; s.append(pk); }
+    box.append(s);
+  });
+  // with one photo, keep the empty slot out of the way on screen too
+  if(filled===1){ const e=box.querySelector('.slot.empty'); if(e) e.style.display='none'; }
+  if(filled===1){ const add=document.createElement('button'); add.className='add no-print'; add.textContent=t('ui_addphoto'); add.onclick=()=>{pickIdx=S.photos.findIndex(x=>!x); $('#fileIn').click();}; box.after(add); box.parentNode.querySelectorAll(':scope > button.add:not(:last-of-type)').forEach(b=>{if(b!==add&&b.textContent===add.textContent)b.remove();}); }
+  else box.parentNode.querySelectorAll(':scope > .photos ~ button.add').forEach(b=>b.remove());
+}
+async function shrink(file){
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1280/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg',0.82);
+}
+$('#fileIn').addEventListener('change', async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  if(S.photos.filter(Boolean).length>=MAX_PHOTOS && !S.photos[pickIdx]){ toast(t('m_max')); return; }
+  try{ S.photos[pickIdx] = await shrink(f); synced[pickIdx]=false; renderPhotos(); fit(); persist(); }catch(err){ toast(t('m_err')+err.message); }
+});
+
+/* ---------- fit to one page ---------- */
+const PAGE_PX = 277/25.4*96;   // A4 height minus 10 mm margins
+function fit(){
+  const sh=$('#sheet'), pg=$('#page'); let fs=10.5;
+  for(; fs>=7; fs-=0.25){ sh.style.fontSize=fs+'pt'; if(pg.offsetHeight<=PAGE_PX) break; }
+  fs=Math.max(fs,7); sh.style.fontSize=fs+'pt';
+  const one = pg.offsetHeight<=PAGE_PX+1;
+  const chip=$('#fitchip'); chip.textContent=(one?t('p1'):t('p2'))+' · '+fs.toFixed(1)+'pt'; chip.classList.toggle('warn',!one);
+}
+
+/* ---------- persistence ---------- */
+let pt; function persist(){ clearTimeout(pt); pt=setTimeout(()=>{ try{ collect(); localStorage.setItem('sdmom_draft',JSON.stringify({S,synced})); }catch(e){} },400); }
+function toast(m){ const s=$('#status'); s.textContent=m; clearTimeout(toast.t); toast.t=setTimeout(()=>s.textContent='',4000); }
+document.addEventListener('input', e=>{ if(e.target.isContentEditable){ fit(); persist(); } });
+document.addEventListener('paste', e=>{ if(e.target.isContentEditable){ e.preventDefault(); document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain')); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.isContentEditable && e.target.matches('.d-lead,.i-id,.i-title,.proj,#f_date,#f_chair')){ e.preventDefault(); } });
+
+/* ---------- Google Sheet sync ---------- */
+function cfg(){ try{return JSON.parse(localStorage.getItem('sdmom_cfg')||'{}');}catch(e){return {};} }
+function gsUrl(){ return (cfg().url || DEFAULT_GS_URL || '').trim(); }
+async function save(){
+  const url=gsUrl(); if(!url){ toast(t('m_nourl')); $('#dSet').showModal(); return; }
+  collect(); if(!S.id) S.id='SD-'+Date.now().toString(36).toUpperCase();
+  toast(t('m_saving'));
+  const {photos,...data}=S;
+  const body={action:'save',key:cfg().key||'',id:S.id,data,photos:photos.map((p,i)=>!p?null:(synced[i]?'keep':p))};
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+    const j=await r.json(); if(!j.ok) throw new Error(j.error||'failed');
+    S.photos.forEach((p,i)=>synced[i]=!!p); persist(); toast(t('m_saved')+' · '+S.id);
+  }catch(e){ toast(t('m_err')+e.message); }
+}
+async function openLoad(){
+  const url=gsUrl(); if(!url){ toast(t('m_nourl')); $('#dSet').showModal(); return; }
+  const box=$('#recList'); box.textContent='…'; $('#dLoad').showModal();
+  try{
+    const j=await (await fetch(url+'?action=list&key='+encodeURIComponent(cfg().key||''))).json();
+    if(!j.ok) throw new Error(j.error);
+    if(!j.items.length){ box.textContent=t('m_nonrec'); return; }
+    box.innerHTML='';
+    j.items.forEach(it=>{ const d=document.createElement('div'); d.className='rec'; d.innerHTML='<span><b></b><br><small></small></span><small></small>';
+      d.querySelector('b').textContent=it.date||'(no date)'; d.querySelector('small').textContent=it.chair||''; d.lastChild.textContent=it.id;
+      d.onclick=()=>loadOne(it.id); box.append(d); });
+  }catch(e){ box.textContent=t('m_err')+e.message; }
+}
+async function loadOne(id){
+  try{
+    const j=await (await fetch(gsUrl()+'?action=get&id='+encodeURIComponent(id)+'&key='+encodeURIComponent(cfg().key||''))).json();
+    if(!j.ok) throw new Error(j.error);
+    S={...blank(),...j.data,id,photos:[j.photos[0]||null,j.photos[1]||null]}; synced=[!!S.photos[0],!!S.photos[1]];
+    $('#dLoad').close(); render(); persist(); toast(t('m_loaded')+' · '+id);
+  }catch(e){ toast(t('m_err')+e.message); }
+}
+
+/* ---------- buttons ---------- */
+$('#bNew').onclick=()=>{ if(confirm(t('m_confirmnew'))){ S=blank(); synced=[false,false]; render(); persist(); } };
+$('#bSave').onclick=save;
+$('#bLoad').onclick=openLoad;
+$('#loadClose').onclick=()=>$('#dLoad').close();
+$('#bPrint').onclick=()=>{ collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); setTimeout(()=>window.print(),50); };
+window.addEventListener('beforeprint',()=>{ collect(); fit(); });
+$('#addInc').onclick=()=>{ collect(); S.incidents.push({id:'',title:'',desc:''}); render(); persist(); };
+$('#addDec').onclick=()=>{ collect(); S.decisions.push({lead:'',text:''}); render(); persist(); };
+$('#bSet').onclick=()=>{ const c=cfg(); $('#cfgUrl').value=c.url||DEFAULT_GS_URL; $('#cfgKey').value=c.key||''; $('#dSet').showModal(); };
+$('#cfgOk').onclick=()=>{ localStorage.setItem('sdmom_cfg',JSON.stringify({url:$('#cfgUrl').value.trim(),key:$('#cfgKey').value})); $('#dSet').close(); };
+$('#lEN').onclick=()=>{lang='en';localStorage.setItem('sdmom_lang',lang);applyLang();};
+$('#lID').onclick=()=>{lang='id';localStorage.setItem('sdmom_lang',lang);applyLang();};
+
+/* ---------- logo ---------- */
+const FALLBACK_LOGO = 'data:image/svg+xml;utf8,'+encodeURIComponent(
+ '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120"><text x="0" y="92" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="84" fill="#4ba37b">EcoOils</text>'+
+ '<text x="262" y="92" font-family="Arial,Helvetica,sans-serif" font-size="84" fill="#ffc20e">Mentari</text>'+
+ '<circle cx="492" cy="40" r="17" fill="#ffc20e"/><g stroke="#ffc20e" stroke-width="5" stroke-linecap="round"><path d="M492 8v-6M492 72v6M460 40h-6M524 40h-6M469 17l-4-4M515 63l4 4M515 17l4-4M469 63l-4 4"/></g></svg>');
+const logo=$('#logo');
+logo.onerror=()=>{ logo.onerror=null; logo.src=FALLBACK_LOGO; };
+(function(){ const l=localStorage.getItem('sdmom_logo'); if(l) logo.src=l; })();
+logo.onload=()=>fit();
+$('#logoIn').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return;
+  const k=await createImageBitmap(f); const s=Math.min(1,900/k.width); const c=document.createElement('canvas'); c.width=k.width*s; c.height=k.height*s;
+  c.getContext('2d').drawImage(k,0,0,c.width,c.height); const d=c.toDataURL('image/png'); localStorage.setItem('sdmom_logo',d); logo.src=d; });
+$('#logoReset').onclick=()=>{ localStorage.removeItem('sdmom_logo'); logo.onerror=()=>{logo.onerror=null;logo.src=FALLBACK_LOGO;}; logo.src='logo.png?'+Date.now(); };
+
+/* ---------- init ---------- */
+$('#ver').textContent='v'+APP_VERSION;
+try{ const d=JSON.parse(localStorage.getItem('sdmom_draft')||'null'); if(d&&d.S){ S={...blank(),...d.S}; synced=d.synced||[false,false]; } }catch(e){}
+render(); applyLang();
+</script>
+</body>
+</html>
