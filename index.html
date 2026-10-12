@@ -192,8 +192,6 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <h3 data-i18n="ui_settings">Settings</h3>
   <label>Google Apps Script Web App URL</label>
   <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/…/exec">
-  <label>Access key (same as SECRET in Code.gs)</label>
-  <input type="password" id="cfgKey">
   <label data-i18n="ui_logo">Replace logo (optional)</label>
   <input type="file" id="logoIn" accept="image/*">
   <div class="hint" data-i18n="ui_logohint">Tip: or put your logo in the repo as logo.png.</div>
@@ -208,12 +206,12 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzcSP8nTLoD77Dvk_NIDjYhCxbcBs6h38KaNIBFp_RHS_-8ihtdH6wn2Q5QPvhxnyXsXw/exec';
 const IMS_PROJECT = 'ecooils-mentari';
 const IMS_BASE = 'https://iggifernandes.github.io/EcoOils-Project-IMS/';
-const DEFAULT_GS_URL = '';   // <- paste your deployed Apps Script URL here once (optional)
+const DEFAULT_GS_URL = 'https://script.google.com/macros/s/AKfycbyx6gwIFZu_8OCNq6TWXozzdd0NiF5DNz0yDZTpFcy7AVZhgkP7UjCdeXe5U3qZqJd5/exec';
 const $ = s => document.querySelector(s);
 const MAX_PHOTOS = 2;
 
@@ -403,8 +401,8 @@ $('#bPrint').onclick=()=>{ collect(); fit(); document.title='Stand Down MOM - '+
 window.addEventListener('beforeprint',()=>{ collect(); fit(); });
 $('#addInc').onclick=()=>{ collect(); S.incidents.push({id:'',title:'',desc:''}); render(); persist(); };
 $('#addDec').onclick=()=>{ collect(); S.decisions.push({lead:'',text:''}); render(); persist(); };
-$('#bSet').onclick=()=>{ const c=cfg(); $('#cfgUrl').value=c.url||DEFAULT_GS_URL; $('#cfgKey').value=c.key||''; $('#dSet').showModal(); };
-$('#cfgOk').onclick=()=>{ localStorage.setItem('sdmom_cfg',JSON.stringify({url:$('#cfgUrl').value.trim(),key:$('#cfgKey').value})); $('#dSet').close(); };
+$('#bSet').onclick=()=>{ const c=cfg(); $('#cfgUrl').value=c.url||DEFAULT_GS_URL; $('#dSet').showModal(); };
+$('#cfgOk').onclick=()=>{ localStorage.setItem('sdmom_cfg',JSON.stringify({url:$('#cfgUrl').value.trim()})); $('#dSet').close(); };
 $('#lEN').onclick=()=>{lang='en';localStorage.setItem('sdmom_lang',lang);applyLang();};
 $('#lID').onclick=()=>{lang='id';localStorage.setItem('sdmom_lang',lang);applyLang();};
 
