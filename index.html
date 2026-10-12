@@ -82,11 +82,15 @@ body:not(.mode-card) #cardSheet,body:not(.mode-card) .cardbar{display:none}
 .rulebox{border:2px solid #c0392b;background:#fdf1ef;border-radius:6px;padding:.4em .7em;margin-top:.6em}
 .rulebox b{color:#c0392b}
 .cfoot{margin-top:.7em;border-top:1px solid var(--line);padding-top:.3em;font-size:.82em;color:#445;display:flex;justify-content:space-between;gap:1em}
-.cphoto{border:1px solid #bbb;background:#f5f6f8;height:13em;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;margin-top:.5em}
+.cphotos{display:grid;grid-template-columns:1fr 1fr;gap:.6em;margin-top:.5em}
+.cphotos.one{grid-template-columns:minmax(0,calc(50% - .3em));justify-content:center}
+.cphoto{border:1px solid #bbb;background:#f5f6f8;aspect-ratio:3/2;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+#c_sdv{font:inherit;border:0;border-bottom:1px dotted #888;background:transparent;padding:0;width:9em}
+@media print{#c_sdv{border:0}}
 .cphoto img{width:100%;height:100%;object-fit:cover}
 .cphoto .pick{color:#6b7886;cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .cphoto.empty{}
-@media print{.cphoto.empty{display:none}}
+@media print{.cphoto.empty{display:none}.cphotos.none{display:none}}
 
 /* ---------- dialogs ---------- */
 dialog{border:0;border-radius:10px;padding:18px 20px;max-width:560px;width:92%;box-shadow:0 10px 40px #0006}
@@ -193,9 +197,9 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <h2 data-i18n="c_learn">Key learnings</h2>
   <div class="cw" id="c_learnv" contenteditable data-ph="One learning per line…"></div>
   <div class="rulebox"><b data-i18n="c_rule">Life Saving Rule:</b> <span id="c_rulev" contenteditable data-ph="Rule that applies…"></span></div>
-  <div class="cphoto empty no-print-empty" id="cphoto"></div>
+  <div class="cphotos" id="cphotos"></div>
   <input type="file" id="cfileIn" accept="image/*" hidden>
-  <div class="cfoot"><span><span data-i18n="c_prep">Prepared by</span>: <span id="c_prep" contenteditable></span></span><span><span data-i18n="c_sd">Stand-down</span>: <span id="c_sdv" contenteditable></span></span><span id="c_stat" data-i18n="c_prelim">Preliminary — subject to investigation</span></div>
+  <div class="cfoot"><span><span data-i18n="c_prep">Prepared by</span>: <span id="c_prep" contenteditable></span></span><span><span data-i18n="c_sd">Stand-down</span>: <input type="date" id="c_sdv"></span><span id="c_stat" data-i18n="c_prelim">Preliminary — subject to investigation</span></div>
 </div></div>
 </div>
 
@@ -232,7 +236,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -449,7 +453,10 @@ $('#logoReset').onclick=()=>{ localStorage.removeItem('sdmom_logo'); logo.onerro
 
 /* ---------- Incident early-learnings card (data comes from the IMS register) ---------- */
 let IMS = [];            // incidents read from the IMS
-let C = {eosm:'',title:'',date:'',loc:'',con:'',cls:'',what:'',find:'',learn:'',act:'',rule:'',prep:'',sd:'',photo:null,lsr:false};
+let C = {eosm:'',title:'',date:'',loc:'',con:'',cls:'',what:'',find:'',learn:'',act:'',rule:'',prep:'',sd:'',photos:[null,null],lsr:false};
+const DEF_PREP='Ignatius Fernandes (HSSE Manager)';
+C.prep=DEF_PREP;
+const isoDate=v=>{ v=String(v||'').trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; const d=new Date(v); return (v&&!isNaN(d))?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')):''; };
 const stripB = x => String(x||'').split('\n').map(l=>l.replace(/^\s*(?:[•\-*]|\d+[.)])\s*/,'').trim()).filter(Boolean);
 function listHtml(el, text, numbered){
   el.innerHTML=''; const lines=stripB(text);
@@ -457,28 +464,35 @@ function listHtml(el, text, numbered){
   lines.forEach((l,i)=>{ const d=document.createElement('div'); d.className='cli'; d.textContent=(numbered?(i+1)+'. ':'• ')+l; el.append(d); });
 }
 function listText(el){ return [...el.querySelectorAll('.cli')].map(d=>d.innerText).concat(el.querySelector('.cli')?[]:[el.innerText]).join('\n'); }
+let cpIdx=0;
 function renderCard(){
   $('#c_eosm').textContent=C.eosm; $('#c_title').textContent=C.title; $('#c_date').textContent=C.date; $('#c_loc').textContent=C.loc;
   $('#c_con').textContent=C.con; $('#c_cls').textContent=C.cls; $('#c_whatv').textContent=C.what;
   listHtml($('#c_findv'),C.find,false); listHtml($('#c_learnv'),C.learn,true); listHtml($('#c_actv'),C.act,false);
-  $('#c_rulev').textContent=C.rule; $('#c_prep').textContent=C.prep; $('#c_sdv').textContent=C.sd;
+  $('#c_rulev').textContent=C.rule; $('#c_prep').textContent=C.prep; $('#c_sdv').value=isoDate(C.sd);
   $('#c_badge').classList.toggle('on',!!C.lsr);
-  const ph=$('#cphoto'); ph.innerHTML=''; ph.classList.toggle('empty',!C.photo);
-  if(C.photo){ const im=document.createElement('img'); im.src=C.photo; ph.append(im, ebtn(()=>editPhoto(C.photo,cardAspect(),u=>{C.photo=u; renderCard(); persistCard();})), xbtn(()=>{C.photo=null; renderCard(); persistCard();})); }
-  else { const pk=document.createElement('div'); pk.className='pick no-print'; pk.textContent=t('m_addphoto'); pk.onclick=()=>$('#cfileIn').click(); ph.append(pk); }
+  const box=$('#cphotos'); box.innerHTML=''; if(!Array.isArray(C.photos)) C.photos=[C.photo||null,null];
+  const nF=C.photos.filter(Boolean).length; box.classList.toggle('none',!nF); box.classList.toggle('one',nF===1);
+  [0,1].forEach(i=>{
+    const ph=document.createElement('div'); ph.className='cphoto'+(C.photos[i]?'':' empty'); const p=C.photos[i];
+    if(nF===1 && !p) ph.classList.add('no-print');
+    if(p){ const im=document.createElement('img'); im.src=p; ph.append(im, ebtn(()=>editPhoto(p,cardAspect(),u=>{C.photos[i]=u; renderCard(); persistCard();})), xbtn(()=>{C.photos[i]=null; renderCard(); persistCard();})); }
+    else { const pk=document.createElement('div'); pk.className='pick no-print'; pk.textContent=t('m_addphoto'); pk.onclick=()=>{ cpIdx=i; $('#cfileIn').click(); }; ph.append(pk); }
+    box.append(ph);
+  });
   $('#logo2').src=$('#logo').src; fit();
 }
 function collectCard(){
   C.eosm=txt($('#c_eosm')); C.title=txt($('#c_title')); C.date=txt($('#c_date')); C.loc=txt($('#c_loc')); C.con=txt($('#c_con')); C.cls=txt($('#c_cls'));
   C.what=txt($('#c_whatv')); C.find=stripB(listText($('#c_findv'))).join('\n'); C.learn=stripB(listText($('#c_learnv'))).join('\n'); C.act=stripB(listText($('#c_actv'))).join('\n');
-  C.rule=txt($('#c_rulev')); C.prep=txt($('#c_prep')); C.sd=txt($('#c_sdv'));
+  C.rule=txt($('#c_rulev')); C.prep=txt($('#c_prep')); C.sd=$('#c_sdv').value||'';
 }
 let cpt; function persistCard(){ clearTimeout(cpt); cpt=setTimeout(()=>{ try{ collectCard(); localStorage.setItem('sdcard_draft',JSON.stringify(C)); }catch(e){} },400); }
 const fromIms = r => { const e=r.earlyLearnings||{}; const strip=x=>stripB(x).join('\n');
   return { eosm:r.eosm||'', title:r.title||'', date:[r.date,r.time].filter(Boolean).join(' · '), loc:r.location||'', con:r.contractor||'',
     cls:[r.classification||r.type, r.riskLevel?('Potential: '+r.riskLevel):''].filter(Boolean).join(' — '),
     what:e.whatHappened||r.description||'', find:e.earlyFindings||'', learn:e.keyLearnings||'', act:e.immediateActions||strip(r.immediateActions),
-    rule:e.lsrRule||'', prep:e.preparedBy||'', sd:e.standDownDate||'', photo:null, lsr:(r.type==='LSR Violation'||r.classification==='LSR Violation') }; };
+    rule:e.lsrRule||'', prep:e.preparedBy||DEF_PREP, sd:isoDate(e.standDownDate), photos:[null,null], lsr:(r.type==='LSR Violation'||r.classification==='LSR Violation') }; };
 function payloadFromUrl(){
   try{
     const d=new URLSearchParams(location.search).get('d'); if(!d) return null;
@@ -499,7 +513,7 @@ async function loadIms(quiet){
 }
 function pickIncident(eosm){
   const r=IMS.find(x=>x.eosm===eosm || (x.eosm||'').startsWith(eosm+'-')); if(!r){ toast(t('m_noinc')); return; }
-  const keep=C.photo; C=fromIms(r); C.photo=keep; $('#cardSel').value=r.eosm; renderCard(); persistCard();
+  const keep=C.photos; C=fromIms(r); C.photos=keep; $('#cardSel').value=r.eosm; renderCard(); persistCard();
 }
 function addToMinutes(eosm, rec){
   const r=rec||IMS.find(x=>x.eosm===eosm); if(!r) return;
@@ -518,8 +532,8 @@ function setMode(m){
 $('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
 $('#cardSel').onchange=e=>{ if(e.target.value) pickIncident(e.target.value); };
 $('#cardReload').onclick=async()=>{ const cur=C.eosm; if(await loadIms() && cur) pickIncident(cur); };
-document.addEventListener('input',e=>{ if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
-$('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photo=u; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
+document.addEventListener('input',e=>{ if(e.target.id==='c_sdv'){ persistCard(); return; } if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
+$('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photos[cpIdx]=u; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
 // The print button prints whichever view is active.
 $('#bPrint').onclick=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
 window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains('mode-card')) collectCard(); else collect(); fit(); });
@@ -527,7 +541,7 @@ window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains(
 
 
 /* ---------- Photo editor: zoom, move (crop), rotate, brightness, contrast ---------- */
-const cardAspect = () => { const e=$('#cphoto'); return (e && e.offsetWidth>0 && e.offsetHeight>0) ? e.offsetWidth/e.offsetHeight : 3; };
+const cardAspect = () => { const e=document.querySelector('#cphotos .cphoto'); return (e && e.offsetWidth>0 && e.offsetHeight>0) ? e.offsetWidth/e.offsetHeight : 3; };
 const PE = { bmp:null, aspect:1.5, zoom:1, ox:0, oy:0, rot:0, bri:1, con:1, done:null, drag:null };
 const peCtx = () => $('#peC').getContext('2d', {willReadFrequently:true});
 function peRender(cv, W, H){
@@ -627,14 +641,14 @@ $('#bCheck').onclick=async()=>{
 /* ---------- init ---------- */
 $('#ver').textContent='v'+APP_VERSION;
 try{ const d=JSON.parse(localStorage.getItem('sdmom_draft')||'null'); if(d&&d.S){ S={...blank(),...d.S}; synced=d.synced||[false,false]; } }catch(e){}
-try{ const d=JSON.parse(localStorage.getItem('sdcard_draft')||'null'); if(d) C={...C,...d}; }catch(e){}
+try{ const d=JSON.parse(localStorage.getItem('sdcard_draft')||'null'); if(d){ C={...C,...d}; if(!Array.isArray(C.photos)) C.photos=[d.photo||null,null]; if(!C.prep) C.prep=DEF_PREP; } }catch(e){}
 render(); applyLang();
 (async function(){
   const q=new URLSearchParams(location.search);
   const card=q.get('card'), mom=q.get('mom'), pl=payloadFromUrl();
   if(pl){
     // Data came with the link from the IMS: no network call needed.
-    if(card){ setMode('card'); C={...fromIms({...pl, earlyLearnings:{whatHappened:pl.whatHappened,earlyFindings:pl.earlyFindings,keyLearnings:pl.keyLearnings,immediateActions:pl.immediateActions,lsrRule:pl.lsrRule,preparedBy:pl.preparedBy,standDownDate:pl.standDownDate}, immediateActions:pl.immediateActionsRecord}), photo:C.photo}; renderCard(); persistCard(); }
+    if(card){ setMode('card'); C={...fromIms({...pl, earlyLearnings:{whatHappened:pl.whatHappened,earlyFindings:pl.earlyFindings,keyLearnings:pl.keyLearnings,immediateActions:pl.immediateActions,lsrRule:pl.lsrRule,preparedBy:pl.preparedBy,standDownDate:pl.standDownDate}, immediateActions:pl.immediateActionsRecord}), photos:C.photos}; renderCard(); persistCard(); }
     if(mom){ addToMinutes(mom, {...pl, earlyLearnings:{whatHappened:pl.whatHappened,keyLearnings:pl.keyLearnings}}); }
     loadIms(true);
   } else {
