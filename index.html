@@ -249,7 +249,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.9';
+const APP_VERSION = '1.3.10';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -600,7 +600,7 @@ function pickIncident(eosm){
 }
 function addToMinutes(eosm, rec){
   const r=rec||IMS.find(x=>x.eosm===eosm); if(!r) return;
-  const c=fromIms(r); const learn=stripB(c.learn).slice(0,3).join(' ');
+  const c=fromIms(r); const learn=stripB(c.learn).slice(0,3).join('; ');
   collect();
   const item={id:c.eosm+((c.lsr&&!/LSR/i.test(c.eosm))?' — LSR':''), title:c.title, desc:(c.what+(learn?' Key learnings: '+learn:'')).trim()};
   if(S.incidents.length===1 && !S.incidents[0].id && !S.incidents[0].title) S.incidents=[item]; else if(!S.incidents.some(x=>x.id.startsWith(c.eosm))) S.incidents.push(item);
@@ -742,7 +742,9 @@ render(); applyLang();
   const card=q.get('card'), mom=q.get('mom'), pl=payloadFromUrl();
   if(pl){
     // Data came with the link from the IMS: no network call needed.
-    if(card){ setMode('card'); C={...fromIms({...pl, earlyLearnings:{whatHappened:pl.whatHappened,earlyFindings:pl.earlyFindings,keyLearnings:pl.keyLearnings,immediateActions:pl.immediateActions,lsrRule:pl.lsrRule,preparedBy:pl.preparedBy,standDownDate:pl.standDownDate}, immediateActions:pl.immediateActionsRecord}), photos:C.photos}; renderCard(); persistCard(); addToMinutes(card,{...pl}); }
+    const rec={...pl, earlyLearnings:{whatHappened:pl.whatHappened,earlyFindings:pl.earlyFindings,keyLearnings:pl.keyLearnings,immediateActions:pl.immediateActions,lsrRule:pl.lsrRule,preparedBy:pl.preparedBy,standDownDate:pl.standDownDate}, immediateActions:pl.immediateActionsRecord};
+    if(pl.minutes){ S={...blank(),...pl.minutes,id:'',photos:[null,null],incidents:[{id:'',title:'',desc:''}]}; synced=[false,false]; render(); }
+    if(card){ setMode('card'); C={...fromIms(rec), photos:C.photos}; renderCard(); persistCard(); addToMinutes(card,rec); }
     if(mom){ addToMinutes(mom, {...pl, earlyLearnings:{whatHappened:pl.whatHappened,keyLearnings:pl.keyLearnings}}); }
     loadIms(true);
   } else {
