@@ -160,6 +160,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <h2 data-i18n="s1">1. Incidents Discussed</h2>
   <div id="incidents"></div>
   <button class="add no-print" id="addInc" data-i18n="ui_addinc">+ Add incident</button>
+  <select class="no-print" id="momSel" title="Incident" style="font:inherit;font-size:13px;padding:5px 8px;border-radius:6px;max-width:100%;margin-left:6px"></select>
 
   <h2 data-i18n="s2">2. Decisions and Actions Agreed</h2>
   <div id="decisions"></div>
@@ -236,7 +237,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.3.3';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -255,7 +256,7 @@ const I18N = {
   m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2',
   ui_minutes:'Minutes',ui_card:'Learning card',ui_fetch:'Reload from IMS',c_doc:'INCIDENT EARLY LEARNINGS',c_no:'Incident No.',c_ttl:'Title',c_dt:'Date & Time',c_loc:'Location',c_con:'Contractor',c_cls:'Classification',
   c_what:'What happened',c_find:'Early findings (preliminary — not final root cause)',c_learn:'Key learnings',c_act:'Immediate actions taken',c_rule:'Life Saving Rule:',c_prep:'Prepared by',c_sd:'Stand-down',c_prelim:'Preliminary — subject to investigation',
-  m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',m_addphoto:'+ Add photo'},
+  m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',m_pickmin:'+ Add incident from register…',m_incadded:'Added to Incidents discussed',m_addphoto:'+ Add photo'},
  id:{doc_title:'NOTULEN RAPAT STAND DOWN',l_date:'Tanggal & Waktu',l_chair:'Dipimpin Oleh',l_att:'Peserta',l_purpose:'Tujuan',l_outcome:'Hasil',
   s1:'1. Insiden yang Dibahas',s2:'2. Keputusan dan Tindakan yang Disepakati',s3:'3. Catatan Penutup',s4:'Bukti Foto — Stand Down Dilaksanakan',
   ui_new:'Baru',pe_title:'Atur foto',pe_hint:'Geser foto untuk memindahkan. Gulir atau pakai slider zoom untuk memperbesar atau memperkecil. Yang tampak di dalam bingkai adalah yang akan dipasang.',pe_zoom:'Zoom',pe_bright:'Kecerahan',pe_contrast:'Kontras',pe_reset:'Reset',pe_cancel:'Batal',pe_apply:'Pakai foto',ui_check:'Periksa dengan Claude',m_copied:'Tersalin. Tempel di obrolan Claude yang baru terbuka (Ctrl+V).',m_copyfail:'Gagal menyalin. Pilih teks di kotak lalu salin manual.',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',
@@ -264,7 +265,7 @@ const I18N = {
   m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2',
   ui_minutes:'Notulen',ui_card:'Kartu pembelajaran',ui_fetch:'Muat ulang dari IMS',c_doc:'PEMBELAJARAN AWAL INSIDEN',c_no:'No. Insiden',c_ttl:'Judul',c_dt:'Tanggal & Waktu',c_loc:'Lokasi',c_con:'Kontraktor',c_cls:'Klasifikasi',
   c_what:'Apa yang terjadi',c_find:'Temuan awal (sementara — bukan akar masalah final)',c_learn:'Pembelajaran utama',c_act:'Tindakan segera yang dilakukan',c_rule:'Aturan Penyelamat Jiwa:',c_prep:'Disusun oleh',c_sd:'Stand down',c_prelim:'Sementara — menunggu hasil investigasi',
-  m_imsfail:'Tidak dapat terhubung ke register insiden',m_noinc:'Pilih insiden',m_addphoto:'+ Tambah foto'}
+  m_imsfail:'Tidak dapat terhubung ke register insiden',m_noinc:'Pilih insiden',m_pickmin:'+ Tambah insiden dari register…',m_incadded:'Ditambahkan ke Insiden yang dibahas',m_addphoto:'+ Tambah foto'}
 };
 let lang = localStorage.getItem('sdmom_lang') || 'en';
 const t = k => (I18N[lang][k] ?? I18N.en[k] ?? k);
@@ -506,14 +507,15 @@ async function loadIms(quiet){
     const j=await res.json();
     if(!Array.isArray(j.incidents)) throw new Error('unexpected reply'+(j.error?': '+j.error:''));
     IMS=(j.incidents||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.eosm||'').localeCompare(a.eosm||''));
-    const sel=$('#cardSel'); sel.innerHTML='<option value="">'+t('m_noinc')+'</option>';
-    IMS.forEach(r=>{ const o=document.createElement('option'); o.value=r.eosm; o.textContent=r.eosm+' — '+(r.title||''); sel.append(o); });
+    ['#cardSel','#momSel'].forEach(id=>{ const sel=$(id); sel.innerHTML='<option value="">'+(id==='#momSel'?t('m_pickmin'):t('m_noinc'))+'</option>';
+      IMS.forEach(r=>{ const o=document.createElement('option'); o.value=r.eosm; o.textContent=r.eosm+' — '+(r.title||''); sel.append(o); }); });
     return true;
   }catch(e){ if(!quiet) toast(t('m_imsfail')+' ('+e.message+')'); return false; }
 }
 function pickIncident(eosm){
   const r=IMS.find(x=>x.eosm===eosm || (x.eosm||'').startsWith(eosm+'-')); if(!r){ toast(t('m_noinc')); return; }
   const keep=C.photos; C=fromIms(r); C.photos=keep; $('#cardSel').value=r.eosm; renderCard(); persistCard();
+  addToMinutes(r.eosm,r);
 }
 function addToMinutes(eosm, rec){
   const r=rec||IMS.find(x=>x.eosm===eosm); if(!r) return;
@@ -530,6 +532,7 @@ function setMode(m){
   fit();
 }
 $('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
+$('#momSel').onchange=e=>{ const v=e.target.value; if(!v) return; addToMinutes(v); e.target.value=''; fit(); toast(t('m_incadded')); };
 $('#cardSel').onchange=e=>{ if(e.target.value) pickIncident(e.target.value); };
 $('#cardReload').onclick=async()=>{ const cur=C.eosm; if(await loadIms() && cur) pickIncident(cur); };
 document.addEventListener('input',e=>{ if(e.target.id==='c_sdv'){ persistCard(); return; } if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
@@ -648,11 +651,11 @@ render(); applyLang();
   const card=q.get('card'), mom=q.get('mom'), pl=payloadFromUrl();
   if(pl){
     // Data came with the link from the IMS: no network call needed.
-    if(card){ setMode('card'); C={...fromIms({...pl, earlyLearnings:{whatHappened:pl.whatHappened,earlyFindings:pl.earlyFindings,keyLearnings:pl.keyLearnings,immediateActions:pl.immediateActions,lsrRule:pl.lsrRule,preparedBy:pl.preparedBy,standDownDate:pl.standDownDate}, immediateActions:pl.immediateActionsRecord}), photos:C.photos}; renderCard(); persistCard(); }
+    if(card){ setMode('card'); C={...fromIms({...pl, earlyLearnings:{whatHappened:pl.whatHappened,earlyFindings:pl.earlyFindings,keyLearnings:pl.keyLearnings,immediateActions:pl.immediateActions,lsrRule:pl.lsrRule,preparedBy:pl.preparedBy,standDownDate:pl.standDownDate}, immediateActions:pl.immediateActionsRecord}), photos:C.photos}; renderCard(); persistCard(); addToMinutes(card,{...pl}); }
     if(mom){ addToMinutes(mom, {...pl, earlyLearnings:{whatHappened:pl.whatHappened,keyLearnings:pl.keyLearnings}}); }
     loadIms(true);
   } else {
-    if(card||mom){ await loadIms(); }
+    if(card||mom){ await loadIms(); } else loadIms(true);
     if(card){ setMode('card'); pickIncident(card); }
     if(mom){ mom.split(',').forEach(m=>addToMinutes(m)); }
   }
