@@ -249,7 +249,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.13';
+const APP_VERSION = '1.3.14';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -522,6 +522,11 @@ async function loadOne(id){
     const {card:cd,...sd}=j.data||{};
     S={...blank(),...sd,id,photos:[j.photos[0]||null,j.photos[1]||null]}; synced=[!!S.photos[0],!!S.photos[1]];
     if(cd){ C={...C,...cd,photos:[null,null]}; renderCard(); persistCard(); }
+    else { // older save without a card: rebuild it from the incident register (first incident in the minutes)
+      try{ if(!IMS.length) await loadIms(true);
+        const first=(S.incidents.find(x=>x.id)||{}).id||''; const key=(first.match(/EOSM-\d+-[A-Z]+(?:-[A-Z]+)?/i)||[])[0];
+        const r=key&&IMS.find(x=>x.eosm===key||(x.eosm||'').startsWith(key)); if(r){ const keep=C.photos; C=fromIms(r); C.photos=keep; renderCard(); persistCard(); }
+      }catch(e){} }
     $('#dLoad').close(); render(); persist(); toast(t('m_loaded')+' · '+id);
   }catch(e){ toast(t('m_err')+e.message); }
 }
