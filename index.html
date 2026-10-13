@@ -249,7 +249,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.15';
+const APP_VERSION = '1.3.16';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -495,11 +495,11 @@ async function save(){
   collect(); if(!S.id) S.id='SD-'+Date.now().toString(36).toUpperCase();
   toast(t('m_saving'));
   collectCard(); const {photos,...data}=S; data.card={...C,photos:undefined,photo:undefined};
-  const body={action:'save',key:cfg().key||'',id:S.id,data,photos:photos.map((p,i)=>!p?null:(synced[i]?'keep':p))};
+  const body={action:'save',key:cfg().key||'',id:S.id,data,photos:photos.map((p,i)=>!p?null:(synced[i]?'keep':p)).concat(C.photos.map((p,i)=>!p?null:(csynced[i]?'keep':p)))};
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
     const j=await r.json(); if(!j.ok) throw new Error(j.error||'failed');
-    S.photos.forEach((p,i)=>synced[i]=!!p); persist(); toast(t('m_saved')+' · '+S.id);
+    S.photos.forEach((p,i)=>synced[i]=!!p); csynced=C.photos.map(p=>!!p); persist(); toast(t('m_saved')+' · '+S.id);
   }catch(e){ toast(t('m_err')+e.message); }
 }
 async function openLoad(){
@@ -521,7 +521,7 @@ async function loadOne(id){
     if(!j.ok) throw new Error(j.error);
     const {card:cd,...sd}=j.data||{};
     S={...blank(),...sd,id,photos:[j.photos[0]||null,j.photos[1]||null]}; synced=[!!S.photos[0],!!S.photos[1]];
-    if(cd){ C={...C,...cd,photos:[null,null]}; renderCard(); persistCard(); }
+    if(cd){ C={...C,...cd,photos:[j.photos[2]||null,j.photos[3]||null]}; csynced=C.photos.map(p=>!!p); renderCard(); persistCard(); }
     else { // older save without a card: never leave a stale card from another incident on screen
       const blankC={eosm:'',title:'',date:'',loc:'',con:'',cls:'',what:'',find:'',learn:'',act:'',rule:'',prep:DEF_PREP,sd:'',photos:[null,null],lsr:false};
       C={...blankC}; const ids=S.incidents.filter(x=>x.id||x.title);
@@ -624,6 +624,7 @@ $('#logoReset').onclick=()=>{ localStorage.removeItem('sdmom_logo'); logo.onerro
 /* ---------- Incident early-learnings card (data comes from the IMS register) ---------- */
 let IMS = [];            // incidents read from the IMS
 let C = {eosm:'',title:'',date:'',loc:'',con:'',cls:'',what:'',find:'',learn:'',act:'',rule:'',prep:'',sd:'',photos:[null,null],lsr:false};
+let csynced=[false,false];
 const DEF_PREP='Ignatius Fernandes (HSSE Manager)';
 C.prep=DEF_PREP;
 const isoDate=v=>{ v=String(v||'').trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; const d=new Date(v); return (v&&!isNaN(d))?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')):''; };
@@ -646,7 +647,7 @@ function renderCard(){
   [0,1].forEach(i=>{
     const ph=document.createElement('div'); ph.className='cphoto'+(C.photos[i]?'':' empty'); const p=C.photos[i];
     if(nF===1 && !p) ph.classList.add('no-print');
-    if(p){ const im=document.createElement('img'); im.src=p; ph.append(im, ebtn(()=>editPhoto(p,cardAspect(),u=>{C.photos[i]=u; renderCard(); persistCard();})), xbtn(()=>{C.photos[i]=null; renderCard(); persistCard();})); }
+    if(p){ const im=document.createElement('img'); im.src=p; ph.append(im, ebtn(()=>editPhoto(p,cardAspect(),u=>{C.photos[i]=u; csynced[i]=false; renderCard(); persistCard();})), xbtn(()=>{C.photos[i]=null; csynced[i]=false; renderCard(); persistCard();})); }
     else { const pk=document.createElement('div'); pk.className='pick no-print'; pk.textContent=t('m_addphoto'); pk.onclick=()=>{ cpIdx=i; $('#cfileIn').click(); }; ph.append(pk); }
     box.append(ph);
   });
@@ -706,7 +707,7 @@ $('#momSel').onchange=e=>{ const v=e.target.value; if(!v) return; addToMinutes(v
 $('#cardSel').onchange=e=>{ if(e.target.value) pickIncident(e.target.value); };
 $('#cardReload').onclick=async()=>{ const cur=C.eosm; if(await loadIms() && cur) pickIncident(cur); };
 document.addEventListener('input',e=>{ if(e.target.id==='c_sdv'){ persistCard(); return; } if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
-$('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photos[cpIdx]=u; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
+$('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photos[cpIdx]=u; csynced[cpIdx]=false; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
 // The print button prints whichever view is active.
 $('#bPrint').onclick=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
 // Download both: Minutes + Learning card in ONE print job, so "Save as PDF" gives a single file (card starts on its own page).

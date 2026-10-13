@@ -17,7 +17,7 @@
  * AFTER EDITING THIS FILE LATER: Deploy -> Manage deployments -> pencil -> Version: New version -> Deploy.
  * (The URL stays the same.)
  */
-const VERSION     = '2.0.0';
+const VERSION     = '2.1.0';
 const SS_ID       = '';                      // leave empty = the sheet this script is attached to
 const MOM_FOLDER  = 'StandDownMOM_Photos';
 const CHUNK       = 40000;                   // Sheets cell limit is 50,000 characters
@@ -28,7 +28,7 @@ const KV_TAB  = 'KV';
 const MOM_TAB = 'StandDownMOM';
 const INC_HEAD = ['Project', 'ID', 'EOSM', 'Title', 'Date', 'Updated'].concat(range_(MAXCH).map(i => 'JSON' + (i + 1)));
 const KV_HEAD  = ['Key', 'Updated'].concat(range_(MAXCH).map(i => 'V' + (i + 1)));
-const MOM_HEAD = ['ID', 'Date', 'ChairedBy', 'Updated', 'Photo1', 'Photo2', 'JSON'];
+const MOM_HEAD = ['ID', 'Date', 'ChairedBy', 'Updated', 'Photo1', 'Photo2', 'JSON', 'CardPhoto1', 'CardPhoto2'];   // photos 3-4 = the Learning card photos
 
 function setup() { tab_(INC_TAB, INC_HEAD); tab_(KV_TAB, KV_HEAD); tab_(MOM_TAB, MOM_HEAD); folder_(); }
 
@@ -185,7 +185,7 @@ function momGet_(id) {
   const sh = tab_(MOM_TAB, MOM_HEAD), row = momFind_(sh, id);
   if (row < 0) throw new Error('Not found: ' + id);
   const v = sh.getRange(row, 1, 1, MOM_HEAD.length).getValues()[0];
-  const photos = [v[4], v[5]].map(fid => {
+  const photos = [v[4], v[5], v[7], v[8]].map(fid => {
     if (!fid) return null;
     try {
       const f = DriveApp.getFileById(fid);
@@ -197,18 +197,20 @@ function momGet_(id) {
 function momSave_(b) {
   const sh = tab_(MOM_TAB, MOM_HEAD), id = b.id;
   if (!id) throw new Error('Missing id');
+  if (sh.getLastColumn() < MOM_HEAD.length) sh.getRange(1, 1, 1, MOM_HEAD.length).setValues([MOM_HEAD]).setFontWeight('bold');   // older sheet: add the card-photo columns
   const row = momFind_(sh, id);
-  const old = row > 0 ? sh.getRange(row, 5, 1, 2).getValues()[0] : ['', ''];
-  const ids = [0, 1].map(i => {
+  const cur = row > 0 ? sh.getRange(row, 1, 1, MOM_HEAD.length).getValues()[0] : [];
+  const old = [cur[4] || '', cur[5] || '', cur[7] || '', cur[8] || ''];
+  const ids = [0, 1, 2, 3].map(i => {
     const p = (b.photos || [])[i];
     if (p === 'keep') return old[i];
     if (old[i]) { try { DriveApp.getFileById(old[i]).setTrashed(true); } catch (e) {} }
     if (!p) return '';
     const m = /^data:(.+?);base64,(.*)$/.exec(p);
     if (!m) return '';
-    return folder_().createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], id + '_photo' + (i + 1) + '.jpg')).getId();
+    return folder_().createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], id + (i < 2 ? '_photo' + (i + 1) : '_card' + (i - 1)) + '.jpg')).getId();
   });
-  const vals = [id, b.data.date || '', b.data.chair || '', new Date().toISOString(), ids[0], ids[1], JSON.stringify(b.data)];
+  const vals = [id, b.data.date || '', b.data.chair || '', new Date().toISOString(), ids[0], ids[1], JSON.stringify(b.data), ids[2], ids[3]];
   if (row < 0) sh.appendRow(vals);
   else sh.getRange(row, 1, 1, MOM_HEAD.length).setValues([vals]);
   return id;
