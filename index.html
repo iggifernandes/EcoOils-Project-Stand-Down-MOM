@@ -127,6 +127,10 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   .inc,.dec,.photos,table.info tr{break-inside:avoid}
   .inc,.dec{padding-right:0}
 }
+#dirtyChip{font-size:12px;font-weight:700;padding:2px 9px;border-radius:10px;display:none;white-space:nowrap}
+#dirtyChip.bad{display:inline-block;background:#c0392b;color:#fff}
+#dirtyChip.ok{display:inline-block;background:#e6f4ea;color:#1e7e34}
+#dUnsaved h3{color:#c0392b;margin:0 0 8px}
 </style>
 </head>
 <body>
@@ -143,7 +147,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
   <span class="seg"><button id="mMOM" class="on" data-i18n="ui_minutes">Minutes</button><button id="mCard" data-i18n="ui_card">Learning card</button></span>
   <span class="cardbar"><select id="cardSel" title="Incident"></select><button id="cardReload" data-i18n="ui_fetch">Reload from IMS</button></span>
   <span class="seg"><button id="lEN" class="on">EN</button><button id="lID">ID</button></span>
-  <span id="status"></span>
+  <span id="status"></span><span id="dirtyChip" class="no-print"></span>
   <span class="spacer"></span>
   <span id="fitchip"></span>
   <span class="ver" id="ver"></span>
@@ -242,6 +246,11 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <!-- Load -->
+<dialog id="dUnsaved">
+  <h3 id="uTitle"></h3>
+  <p id="uMsg" class="hint" style="font-size:14px;color:#223"></p>
+  <div class="row"><button id="uCancel"></button><button id="uSkip"></button><button id="uSave" class="primary"></button></div>
+</dialog>
 <dialog id="dLoad">
   <h3 data-i18n="ui_load">Load</h3>
   <div id="recList" class="hint">…</div>
@@ -249,7 +258,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.16';
+const APP_VERSION = '1.3.17';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -268,7 +277,7 @@ const I18N = {
   m_loaded:'Loaded',m_nonrec:'No saved MOMs found',m_err:'Error: ',m_max:'Maximum 2 photos',p1:'1 page ✓',p2:'Flows to page 2',
   ui_minutes:'Minutes',ui_card:'Learning card',ui_fetch:'Reload from IMS',c_doc:'INCIDENT EARLY LEARNINGS',c_no:'Incident No.',c_ttl:'Title',c_dt:'Date & Time',c_loc:'Location',c_con:'Contractor',c_cls:'Classification',
   c_what:'What happened',c_find:'Early findings (preliminary — not final root cause)',c_learn:'Key learnings',c_act:'Immediate actions taken',c_rule:'Life Saving Rule:',c_prep:'Prepared by',c_sd:'Stand-down',c_prelim:'Preliminary — subject to investigation',
-  m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',m_nocard:'This save has no Learning card — open the Learning card and pick the incident',m_pickmin:'+ Add incident from register…',m_incadded:'Added to Incidents discussed',m_addphoto:'+ Add photo'},
+  m_imsfail:'Could not reach the incident register',m_noinc:'Pick an incident',u_title:'Not saved to the Sheet yet',u_msg:'You have changes that are not saved. If you continue without saving, they exist only in this browser and will be lost on another device.',u_post_title:'You printed, but the data is NOT saved',u_post_msg:'The PDF is done, but this stand-down / learning card is not saved to the Sheet yet. Save it now so it can be loaded again.',u_save:'Save to Sheet',u_savego:'Save, then continue',u_skip:'Continue without saving',u_cancel:'Cancel',u_later:'Not now',d_bad:'● Not saved',d_ok:'✓ Saved',m_nocard:'This save has no Learning card — open the Learning card and pick the incident',m_pickmin:'+ Add incident from register…',m_incadded:'Added to Incidents discussed',m_addphoto:'+ Add photo'},
  id:{doc_title:'NOTULEN RAPAT STAND DOWN',l_date:'Tanggal & Waktu',l_chair:'Dipimpin Oleh',l_att:'Peserta',l_purpose:'Tujuan',l_outcome:'Hasil',
   s1:'1. Insiden yang Dibahas',s2:'2. Keputusan dan Tindakan yang Disepakati',s3:'3. Catatan Penutup',s4:'Bukti Foto — Stand Down Dilaksanakan',
   ui_new:'Baru',pe_title:'Atur foto',pe_hint:'Geser foto untuk memindahkan. Gulir atau pakai slider zoom untuk memperbesar atau memperkecil. Yang tampak di dalam bingkai adalah yang akan dipasang.',pe_zoom:'Zoom',pe_bright:'Kecerahan',pe_contrast:'Kontras',pe_reset:'Reset',pe_cancel:'Batal',pe_apply:'Pakai foto',ui_check:'Periksa dengan Claude',m_copied:'Tersalin. Tempel di obrolan Claude yang baru terbuka (Ctrl+V).',m_copyfail:'Gagal menyalin. Pilih teks di kotak lalu salin manual.',ui_save:'Simpan ke Sheet',ui_load:'Buka',ui_print:'Cetak / PDF',ui_settings:'Pengaturan',ui_addinc:'+ Tambah insiden',ui_adddec:'+ Tambah keputusan',ui_pickdec:'+ Tambah keputusan yang disarankan…',ui_printboth:'Unduh keduanya (PDF)',m_cardempty:'Kartu pembelajaran masih kosong. Buka Kartu pembelajaran dan pilih insiden dulu.',
@@ -277,13 +286,14 @@ const I18N = {
   m_loaded:'Dimuat',m_nonrec:'Belum ada notulen tersimpan',m_err:'Kesalahan: ',m_max:'Maksimal 2 foto',p1:'1 halaman ✓',p2:'Lanjut ke halaman 2',
   ui_minutes:'Notulen',ui_card:'Kartu pembelajaran',ui_fetch:'Muat ulang dari IMS',c_doc:'PEMBELAJARAN AWAL INSIDEN',c_no:'No. Insiden',c_ttl:'Judul',c_dt:'Tanggal & Waktu',c_loc:'Lokasi',c_con:'Kontraktor',c_cls:'Klasifikasi',
   c_what:'Apa yang terjadi',c_find:'Temuan awal (sementara — bukan akar masalah final)',c_learn:'Pembelajaran utama',c_act:'Tindakan segera yang dilakukan',c_rule:'Aturan Penyelamat Jiwa:',c_prep:'Disusun oleh',c_sd:'Stand down',c_prelim:'Sementara — menunggu hasil investigasi',
-  m_imsfail:'Tidak dapat terhubung ke register insiden',m_noinc:'Pilih insiden',m_nocard:'Simpanan ini tidak memiliki kartu pembelajaran — buka kartu dan pilih insiden',m_pickmin:'+ Tambah insiden dari register…',m_incadded:'Ditambahkan ke Insiden yang dibahas',m_addphoto:'+ Tambah foto'}
+  m_imsfail:'Tidak dapat terhubung ke register insiden',m_noinc:'Pilih insiden',u_title:'Belum disimpan ke Sheet',u_msg:'Ada perubahan yang belum disimpan. Jika dilanjutkan tanpa menyimpan, data hanya ada di browser ini dan hilang di perangkat lain.',u_post_title:'Sudah dicetak, tetapi data BELUM disimpan',u_post_msg:'PDF sudah dibuat, tetapi stand down / kartu pembelajaran ini belum disimpan ke Sheet. Simpan sekarang agar bisa dimuat kembali.',u_save:'Simpan ke Sheet',u_savego:'Simpan, lalu lanjutkan',u_skip:'Lanjutkan tanpa menyimpan',u_cancel:'Batal',u_later:'Nanti',d_bad:'● Belum disimpan',d_ok:'✓ Tersimpan',m_nocard:'Simpanan ini tidak memiliki kartu pembelajaran — buka kartu dan pilih insiden',m_pickmin:'+ Tambah insiden dari register…',m_incadded:'Ditambahkan ke Insiden yang dibahas',m_addphoto:'+ Tambah foto'}
 };
 let lang = localStorage.getItem('sdmom_lang') || 'en';
 const t = k => (I18N[lang][k] ?? I18N.en[k] ?? k);
 function applyLang(){
   try{ fillOutcomes(); fillDecSets(); }catch(e){}
   document.documentElement.lang = lang;
+  try{ updDirty(); }catch(e){}
   document.querySelectorAll('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
   $('#lEN').classList.toggle('on', lang==='en'); $('#lID').classList.toggle('on', lang==='id');
   renderPhotos(); fit();
@@ -481,7 +491,11 @@ function fitBoth(){
 }
 
 /* ---------- persistence ---------- */
-let pt; function persist(){ clearTimeout(pt); pt=setTimeout(()=>{ try{ collect(); localStorage.setItem('sdmom_draft',JSON.stringify({S,synced})); }catch(e){} },400); }
+let dirty=false, lastSaved='';
+function updDirty(){ const c=$('#dirtyChip'); if(!c) return; if(dirty){ c.className='no-print bad'; c.textContent=t('d_bad'); } else if(lastSaved){ c.className='no-print ok'; c.textContent=t('d_ok')+' '+lastSaved; } else { c.className='no-print'; c.textContent=''; } }
+function setDirty(v){ dirty=v; if(!v) lastSaved=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); updDirty(); }
+window.addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
+let pt; function persist(){ dirty=true; updDirty(); clearTimeout(pt); pt=setTimeout(()=>{ try{ collect(); localStorage.setItem('sdmom_draft',JSON.stringify({S,synced})); }catch(e){} },400); }
 function toast(m){ const s=$('#status'); s.textContent=m; clearTimeout(toast.t); toast.t=setTimeout(()=>s.textContent='',4000); }
 document.addEventListener('input', e=>{ if(e.target.isContentEditable){ fit(); persist(); } });
 document.addEventListener('paste', e=>{ if(e.target.isContentEditable){ e.preventDefault(); document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain')); } });
@@ -499,7 +513,7 @@ async function save(){
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
     const j=await r.json(); if(!j.ok) throw new Error(j.error||'failed');
-    S.photos.forEach((p,i)=>synced[i]=!!p); csynced=C.photos.map(p=>!!p); persist(); toast(t('m_saved')+' · '+S.id);
+    S.photos.forEach((p,i)=>synced[i]=!!p); csynced=C.photos.map(p=>!!p); persist(); setDirty(false); toast(t('m_saved')+' · '+S.id);
   }catch(e){ toast(t('m_err')+e.message); }
 }
 async function openLoad(){
@@ -528,14 +542,26 @@ async function loadOne(id){
       try{ if(ids.length===1){ if(!IMS.length) await loadIms(true);
           const key=((ids[0].id||'').match(/EOSM-\d+-[A-Z]+(?:-[A-Z]+)?/i)||[])[0]; const r=key&&IMS.find(x=>x.eosm===key||(x.eosm||'').startsWith(key)); if(r) C=fromIms(r); } }catch(e){}
       renderCard(); persistCard(); if(!C.eosm) toast(t('m_nocard')); }
-    $('#dLoad').close(); render(); persist(); toast(t('m_loaded')+' · '+id);
+    $('#dLoad').close(); render(); persist(); setDirty(false); toast(t('m_loaded')+' · '+id);
   }catch(e){ toast(t('m_err')+e.message); }
 }
 
 /* ---------- buttons ---------- */
-$('#bNew').onclick=()=>{ if(confirm(t('m_confirmnew'))){ S=blank(); synced=[false,false]; render(); persist(); } };
+/* ---------- unsaved-data reminder (app popup) ---------- */
+let uCont=null, uPost=false;
+function showUnsaved(post,cont){
+  uPost=post; uCont=cont; $('#uTitle').textContent=t(post?'u_post_title':'u_title'); $('#uMsg').textContent=t(post?'u_post_msg':'u_msg');
+  $('#uSave').textContent=t(post?'u_save':'u_savego'); $('#uSkip').textContent=t(post?'u_later':'u_skip'); $('#uCancel').textContent=t('u_cancel');
+  $('#uCancel').style.display=post?'none':''; $('#dUnsaved').showModal();
+}
+function guard(fn){ if(!dirty){ fn(); return; } showUnsaved(false,fn); }
+$('#uCancel').onclick=()=>{ uCont=null; $('#dUnsaved').close(); try{ $('#cardSel').value=C.eosm||''; }catch(e){} };
+$('#uSkip').onclick=()=>{ const f=uCont; uCont=null; $('#dUnsaved').close(); if(f) f(); };
+$('#uSave').onclick=async()=>{ const f=uCont, post=uPost; uCont=null; $('#dUnsaved').close(); await save(); if(!post && !dirty && f) f(); else if(!post && dirty) showUnsaved(false,f); };
+window.addEventListener('afterprint',()=>{ if(dirty && !$('#dUnsaved').open) showUnsaved(true,null); });
+$('#bNew').onclick=()=>guard(()=>{ if(confirm(t('m_confirmnew'))){ S=blank(); synced=[false,false]; render(); persist(); } });
 $('#bSave').onclick=save;
-$('#bLoad').onclick=openLoad;
+$('#bLoad').onclick=()=>guard(openLoad);
 $('#loadClose').onclick=()=>$('#dLoad').close();
 $('#bPrint').onclick=()=>{ collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); setTimeout(()=>window.print(),50); };
 window.addEventListener('beforeprint',()=>{ collect(); fit(); });
@@ -658,7 +684,7 @@ function collectCard(){
   C.what=txt($('#c_whatv')); C.find=stripB(listText($('#c_findv'))).join('\n'); C.learn=stripB(listText($('#c_learnv'))).join('\n'); C.act=stripB(listText($('#c_actv'))).join('\n');
   C.rule=txt($('#c_rulev')); C.prep=txt($('#c_prep')); C.sd=$('#c_sdv').value||'';
 }
-let cpt; function persistCard(){ clearTimeout(cpt); cpt=setTimeout(()=>{ try{ collectCard(); localStorage.setItem('sdcard_draft',JSON.stringify(C)); }catch(e){} },400); }
+let cpt; function persistCard(){ dirty=true; updDirty(); clearTimeout(cpt); cpt=setTimeout(()=>{ try{ collectCard(); localStorage.setItem('sdcard_draft',JSON.stringify(C)); }catch(e){} },400); }
 const fromIms = r => { const e=r.earlyLearnings||{}; const strip=x=>stripB(x).join('\n');
   return { eosm:r.eosm||'', title:r.title||'', date:[r.date,r.time].filter(Boolean).join(' · '), loc:r.location||'', con:r.contractor||'',
     cls:[r.classification||r.type, r.riskLevel?('Potential: '+r.riskLevel):''].filter(Boolean).join(' — '),
@@ -704,14 +730,15 @@ function setMode(m){
 }
 $('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
 $('#momSel').onchange=e=>{ const v=e.target.value; if(!v) return; addToMinutes(v); e.target.value=''; fit(); toast(t('m_incadded')); };
-$('#cardSel').onchange=e=>{ if(e.target.value) pickIncident(e.target.value); };
+$('#cardSel').onchange=e=>{ const v=e.target.value; if(!v) return; guard(()=>pickIncident(v)); };
 $('#cardReload').onclick=async()=>{ const cur=C.eosm; if(await loadIms() && cur) pickIncident(cur); };
 document.addEventListener('input',e=>{ if(e.target.id==='c_sdv'){ persistCard(); return; } if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
 $('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photos[cpIdx]=u; csynced[cpIdx]=false; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
 // The print button prints whichever view is active.
-$('#bPrint').onclick=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
+const doPrint=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
+$('#bPrint').onclick=()=>guard(doPrint);
 // Download both: Minutes + Learning card in ONE print job, so "Save as PDF" gives a single file (card starts on its own page).
-$('#bPrintBoth').onclick=()=>{
+const doPrintBoth=()=>{
   if(document.body.classList.contains('mode-card')) collectCard();
   collect(); renderCard();
   if(!C.eosm && !C.title){ toast(t('m_cardempty')); return; }
@@ -719,6 +746,7 @@ $('#bPrintBoth').onclick=()=>{
   document.title='Stand Down MOM + Early Learnings - '+(S.date||C.eosm||'draft');
   setTimeout(()=>window.print(),50);
 };
+$('#bPrintBoth').onclick=()=>guard(doPrintBoth);
 window.addEventListener('afterprint',()=>{ if(document.body.classList.contains('mode-both')){ document.body.classList.remove('mode-both'); fit(); } });
 window.addEventListener('beforeprint',()=>{ if(document.body.classList.contains('mode-both')){ collect(); collectCard(); fitBoth(); return; } if(document.body.classList.contains('mode-card')) collectCard(); else collect(); fit(); });
 
