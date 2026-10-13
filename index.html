@@ -249,7 +249,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.12';
+const APP_VERSION = '1.3.13';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -494,7 +494,7 @@ async function save(){
   const url=gsUrl(); if(!url){ toast(t('m_nourl')); $('#dSet').showModal(); return; }
   collect(); if(!S.id) S.id='SD-'+Date.now().toString(36).toUpperCase();
   toast(t('m_saving'));
-  const {photos,...data}=S;
+  collectCard(); const {photos,...data}=S; data.card={...C,photos:undefined,photo:undefined};
   const body={action:'save',key:cfg().key||'',id:S.id,data,photos:photos.map((p,i)=>!p?null:(synced[i]?'keep':p))};
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
@@ -519,7 +519,9 @@ async function loadOne(id){
   try{
     const j=await (await fetch(gsUrl()+'?action=get&id='+encodeURIComponent(id)+'&key='+encodeURIComponent(cfg().key||''))).json();
     if(!j.ok) throw new Error(j.error);
-    S={...blank(),...j.data,id,photos:[j.photos[0]||null,j.photos[1]||null]}; synced=[!!S.photos[0],!!S.photos[1]];
+    const {card:cd,...sd}=j.data||{};
+    S={...blank(),...sd,id,photos:[j.photos[0]||null,j.photos[1]||null]}; synced=[!!S.photos[0],!!S.photos[1]];
+    if(cd){ C={...C,...cd,photos:[null,null]}; renderCard(); persistCard(); }
     $('#dLoad').close(); render(); persist(); toast(t('m_loaded')+' · '+id);
   }catch(e){ toast(t('m_err')+e.message); }
 }
