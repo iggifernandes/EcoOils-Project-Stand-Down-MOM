@@ -258,7 +258,7 @@ dialog button.primary{background:var(--green);color:#fff;border-color:var(--gree
 </dialog>
 
 <script>
-const APP_VERSION = '1.3.17';
+const APP_VERSION = '1.3.18';
 // Link to the Incident Management app (IMS): the register is read, never written, from here.
 const IMS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyrtGd-G9J2n6JakYLG1R8Gwujs69ByuuwqOle3alguCxcC-JAQJQqygh7FGU_keUiqhA/exec';
 const IMS_PROJECT = 'ecooils-mentari';
@@ -495,9 +495,10 @@ let dirty=false, lastSaved='';
 function updDirty(){ const c=$('#dirtyChip'); if(!c) return; if(dirty){ c.className='no-print bad'; c.textContent=t('d_bad'); } else if(lastSaved){ c.className='no-print ok'; c.textContent=t('d_ok')+' '+lastSaved; } else { c.className='no-print'; c.textContent=''; } }
 function setDirty(v){ dirty=v; if(!v) lastSaved=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); updDirty(); }
 window.addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
-let pt; function persist(){ dirty=true; updDirty(); clearTimeout(pt); pt=setTimeout(()=>{ try{ collect(); localStorage.setItem('sdmom_draft',JSON.stringify({S,synced})); }catch(e){} },400); }
+let pt; function persist(){ dirty=true; updDirty(); clearTimeout(pt); pt=setTimeout(()=>{ try{ collect(); localStorage.setItem('sdmom_draft',JSON.stringify({S,synced})); }catch(e){ try{ localStorage.setItem('sdmom_draft',JSON.stringify({S:{...S,photos:[null,null]},synced:[false,false]})); toast('Browser storage is full — photos are not kept in the draft. Save to Sheet.'); }catch(e2){ toast('Browser storage is full — Save to Sheet now.'); } } },400); }
 function toast(m){ const s=$('#status'); s.textContent=m; clearTimeout(toast.t); toast.t=setTimeout(()=>s.textContent='',4000); }
-document.addEventListener('input', e=>{ if(e.target.isContentEditable){ fit(); persist(); } });
+let fitT; const fitSoon=()=>{ cancelAnimationFrame(fitT); fitT=requestAnimationFrame(()=>fit()); };
+document.addEventListener('input', e=>{ const el=e.target; if(el.id==='c_sdv'){ persistCard(); return; } if(!el.isContentEditable) return; fitSoon(); if(el.closest('#cardSheet')) persistCard(); else persist(); });
 document.addEventListener('paste', e=>{ if(e.target.isContentEditable){ e.preventDefault(); document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain')); } });
 document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.isContentEditable && e.target.matches('.d-lead,.i-id,.i-title,.proj,#f_date,#f_chair')){ e.preventDefault(); } });
 
@@ -563,7 +564,6 @@ $('#bNew').onclick=()=>guard(()=>{ if(confirm(t('m_confirmnew'))){ S=blank(); sy
 $('#bSave').onclick=save;
 $('#bLoad').onclick=()=>guard(openLoad);
 $('#loadClose').onclick=()=>$('#dLoad').close();
-$('#bPrint').onclick=()=>{ collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); setTimeout(()=>window.print(),50); };
 window.addEventListener('beforeprint',()=>{ collect(); fit(); });
 $('#addInc').onclick=()=>{ collect(); S.incidents.push({id:'',title:'',desc:''}); render(); persist(); };
 $('#addDec').onclick=()=>{ collect(); S.decisions.push({lead:'',text:''}); render(); persist(); };
@@ -684,7 +684,7 @@ function collectCard(){
   C.what=txt($('#c_whatv')); C.find=stripB(listText($('#c_findv'))).join('\n'); C.learn=stripB(listText($('#c_learnv'))).join('\n'); C.act=stripB(listText($('#c_actv'))).join('\n');
   C.rule=txt($('#c_rulev')); C.prep=txt($('#c_prep')); C.sd=$('#c_sdv').value||'';
 }
-let cpt; function persistCard(){ dirty=true; updDirty(); clearTimeout(cpt); cpt=setTimeout(()=>{ try{ collectCard(); localStorage.setItem('sdcard_draft',JSON.stringify(C)); }catch(e){} },400); }
+let cpt; function persistCard(){ dirty=true; updDirty(); clearTimeout(cpt); cpt=setTimeout(()=>{ try{ collectCard(); localStorage.setItem('sdcard_draft',JSON.stringify(C)); }catch(e){ try{ localStorage.setItem('sdcard_draft',JSON.stringify({...C,photos:[null,null]})); toast('Browser storage is full — card photos are not kept in the draft. Save to Sheet.'); }catch(e2){ toast('Browser storage is full — Save to Sheet now.'); } } },400); }
 const fromIms = r => { const e=r.earlyLearnings||{}; const strip=x=>stripB(x).join('\n');
   return { eosm:r.eosm||'', title:r.title||'', date:[r.date,r.time].filter(Boolean).join(' · '), loc:r.location||'', con:r.contractor||'',
     cls:[r.classification||r.type, r.riskLevel?('Potential: '+r.riskLevel):''].filter(Boolean).join(' — '),
@@ -732,7 +732,6 @@ $('#mMOM').onclick=()=>setMode('mom'); $('#mCard').onclick=()=>setMode('card');
 $('#momSel').onchange=e=>{ const v=e.target.value; if(!v) return; addToMinutes(v); e.target.value=''; fit(); toast(t('m_incadded')); };
 $('#cardSel').onchange=e=>{ const v=e.target.value; if(!v) return; guard(()=>pickIncident(v)); };
 $('#cardReload').onclick=async()=>{ const cur=C.eosm; if(await loadIms() && cur) pickIncident(cur); };
-document.addEventListener('input',e=>{ if(e.target.id==='c_sdv'){ persistCard(); return; } if(e.target.isContentEditable && e.target.closest('#cardSheet')){ fit(); persistCard(); } });
 $('#cfileIn').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; try{ editPhoto(f,cardAspect(),u=>{ C.photos[cpIdx]=u; csynced[cpIdx]=false; renderCard(); persistCard(); }); }catch(err){ toast(t('m_err')+err.message); } });
 // The print button prints whichever view is active.
 const doPrint=()=>{ if(document.body.classList.contains('mode-card')){ collectCard(); fit(); document.title='Early Learnings - '+(C.eosm||'draft'); } else { collect(); fit(); document.title='Stand Down MOM - '+(S.date||'draft'); } setTimeout(()=>window.print(),50); };
